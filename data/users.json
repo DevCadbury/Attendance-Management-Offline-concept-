@@ -1,0 +1,50 @@
+[
+  {
+    "id": "admin1",
+    "username": "admin",
+    "password": "$2b$10$/f4lpqkLcgaUFn97Pj8WjuhlNIXtMtODlT4HnXtnESs091AXFMjSq",
+    "role": "admin",
+    "name": "System Administrator"
+  },
+  {
+    "id": "teacher1",
+    "username": "teacher",
+    "password": "$2b$10$rTRXoqYKQovhMm1wrd77iOsjvh3z.gEtDIGdU93L5Fsg/gR/Qn0z2",
+    "role": "teacher",
+    "name": "Prof. Dumbledore"
+  },
+  {
+    "id": "student1",
+    "username": "student",
+    "password": "$2b$10$/kT4HWcivPbK5VJgU2cp.Oa6HIHwz/BaQoFnBWIMj9rBFxZubIoPW",
+    "role": "student",
+    "name": "Harry Potter",
+    "updatedAt": 1768039207949,
+    "sectionId": "mpankh"
+  },
+  {
+    "id": "student2",
+    "username": "student2",
+    "password": "$2b$10$me//LjUaGUMsBfOM2PBfM.dh.iJu7AcbZfCzN62GL9zTg.8MkYzkW",
+    "role": "student",
+    "name": "Hermione Granger",
+    "sectionId": "sec2",
+    "updatedAt": 1768039203846
+  },
+  {
+    "id": "nbdjij",
+    "username": "prince844121@gmail.com",
+    "password": "$2b$10$VN7wSSrh1j0euzE199mFw.slNitAS5qM5I7ujZ0vP0LHcsmSRwmUC",
+    "role": "teacher",
+    "name": "Chaman kumar",
+    "updatedAt": 1768037697653
+  },
+  {
+    "id": "zpmqlz",
+    "username": "chaman",
+    "password": "$2b$10$SuKoq/34bIuzkVpSqZcpxuJkUdF2e5CTPVNcyhFnLPl.7cwnXTLjG",
+    "role": "admin",
+    "name": "Chaman kumar",
+    "updatedAt": 1768037709737
+  }
+]

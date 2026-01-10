@@ -1,0 +1,75 @@
+
+> ok@0.1.0 build
+> next build
+
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+ ΓÜá Warning: Next.js inferred your workspace root, but it may not be correct.
+ We detected multiple lockfiles and selected the directory of C:\Users\Chaman\package-lock.json as the root directory.
+ To silence this warning, set `turbopack.root` in your Next.js config, or consider removing one of the lockfiles if it's not needed.
+   See https://nextjs.org/docs/app/api-reference/config/next-config-js/turbopack#root-directory for more information.
+ Detected additional lockfiles: 
+   * C:\Users\Chaman\Desktop\codevite\ok\package-lock.json
+   * C:\Users\Chaman\Desktop\package-lock.json
+
+   Γû▓ Next.js 16.0.5 (Turbopack)
+
+ ΓÜá The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+   Creating an optimized production build ...
+[baseline-browser-mapping] The data in this module is over two months old.  To ensure accurate Baseline data, please update: `npm i baseline-browser-mapping@latest -D`
+Error: Can't resolve 'tailwindcss-animate' in 'C:\Users\Chaman\Desktop\codevite\ok\app'
+    [at finishWithoutResolve (C:\Users\Chaman\Desktop\codevite\ok\node_modules\enhanced-resolve\lib\Resolver.js:565:18)]
+    [at C:\Users\Chaman\Desktop\codevite\ok\node_modules\enhanced-resolve\lib\Resolver.js:657:14]
+    [at C:\Users\Chaman\Desktop\codevite\ok\node_modules\enhanced-resolve\lib\Resolver.js:718:5]
+    [at eval (eval at create (C:\Users\Chaman\Desktop\codevite\ok\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)]
+    [at C:\Users\Chaman\Desktop\codevite\ok\node_modules\enhanced-resolve\lib\Resolver.js:718:5]
+    [at eval (eval at create (C:\Users\Chaman\Desktop\codevite\ok\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:27:1)]
+    [at C:\Users\Chaman\Desktop\codevite\ok\node_modules\enhanced-resolve\lib\DescriptionFilePlugin.js:89:43]
+    [at C:\Users\Chaman\Desktop\codevite\ok\node_modules\enhanced-resolve\lib\Resolver.js:718:5]
+    [at eval (eval at create (C:\Users\Chaman\Desktop\codevite\ok\node_modules\tapable\lib\HookCodeFactory.js:31:10), <anonymous>:15:1)]
+    [at C:\Users\Chaman\Desktop\codevite\ok\node_modules\enhanced-resolve\lib\Resolver.js:718:5] {
+  details: "resolve 'tailwindcss-animate' in 'C:\\Users\\Chaman\\Desktop\\codevite\\ok\\app'\n" +
+    '  Parsed request is a module\n' +
+    '  using description file: C:\\Users\\Chaman\\Desktop\\codevite\\ok\\package.json (relative path: ./app)\n' +
+    '    resolve as module\n' +
+    "      C:\\Users\\Chaman\\Desktop\\codevite\\ok\\app\\node_modules doesn't exist or is not a directory\n" +
+    '      looking for modules in C:\\Users\\Chaman\\Desktop\\codevite\\ok\\node_modules\n' +
+    '        single file module\n' +
+    '          using description file: C:\\Users\\Chaman\\Desktop\\codevite\\ok\\package.json (relative path: ./node_modules/tailwindcss-animate)\n' +
+    '            no extension\n' +
+    "              C:\\Users\\Chaman\\Desktop\\codevite\\ok\\node_modules\\tailwindcss-animate doesn't exist\n" +
+    '            .js\n' +
+    "              C:\\Users\\Chaman\\Desktop\\codevite\\ok\\node_modules\\tailwindcss-animate.js doesn't exist\n" +
+    '            .json\n' +
+    "              C:\\Users\\Chaman\\Desktop\\codevite\\ok\\node_modules\\tailwindcss-animate.json doesn't exist\n" +
+    '            .node\n' +
+    "              C:\\Users\\Chaman\\Desktop\\codevite\\ok\\node_modules\\tailwindcss-animate.node doesn't exist\n" +
+    '            .ts\n' +
+    "              C:\\Users\\Chaman\\Desktop\\codevite\\ok\\node_modules\\tailwindcss-animate.ts doesn't exist\n" +
+    "        C:\\Users\\Chaman\\Desktop\\codevite\\ok\\node_modules\\tailwindcss-animate doesn't exist\n" +
+    "      C:\\Users\\Chaman\\Desktop\\codevite\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\Chaman\\Desktop\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\Chaman\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\Users\\node_modules doesn't exist or is not a directory\n" +
+    "      C:\\node_modules doesn't exist or is not a directory"
+}
+
+> Build error occurred
+Error: Turbopack build failed with 1 errors:
+./Desktop/codevite/ok/app/globals.css
+Error evaluating Node.js code
+CssSyntaxError: tailwindcss: C:\Users\Chaman\Desktop\codevite\ok\app\globals.css:1:1: Can't resolve 'tailwindcss-animate' in 'C:\Users\Chaman\Desktop\codevite\ok\app'
+    at Input.error (Desktop/codevite/ok/node_modules/postcss/lib/input.js:135:16) [C:\Users\Chaman\Desktop\codevite\ok\.next\build\chunks\818a9_233ad163._.js:4651:22]
+    at Root.error (Desktop/codevite/ok/node_modules/postcss/lib/node.js:146:32) [C:\Users\Chaman\Desktop\codevite\ok\.next\build\chunks\818a9_233ad163._.js:928:38]
+    [at Object.Once (C:\Users\Chaman\Desktop\codevite\ok\node_modules\@tailwindcss\postcss\dist\index.js:10:6912)]
+    at async LazyResult.runAsync (Desktop/codevite/ok/node_modules/postcss/lib/lazy-result.js:293:11) [C:\Users\Chaman\Desktop\codevite\ok\.next\build\chunks\818a9_233ad163._.js:6206:21]
+    at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34) [C:\Users\Chaman\Desktop\codevite\ok\.next\build\chunks\[root-of-the-server]__67445d25._.js:146:36]
+    at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23) [C:\Users\Chaman\Desktop\codevite\ok\.next\build\chunks\[root-of-the-server]__efa98181._.js:443:31]
+
+Import trace:
+  Client Component Browser:
+    ./Desktop/codevite/ok/app/globals.css [Client Component Browser]
+    ./Desktop/codevite/ok/app/layout.tsx [Server Component]
+
+
+    at async transform (turbopack:///[turbopack-node]/transforms/postcss.ts:70:34) [C:\Users\Chaman\Desktop\codevite\ok\.next\build\chunks\[root-of-the-server]__67445d25._.js:146:36])
+    at async run (turbopack:///[turbopack-node]/ipc/evaluate.ts:92:23) [C:\Users\Chaman\Desktop\codevite\ok\.next\build\chunks\[root-of-the-server]__efa98181._.js:443:31])
