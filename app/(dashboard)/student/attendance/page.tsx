@@ -1,20 +1,28 @@
-import { AttendanceCalendar } from '@/components/timetable/attendance-calendar';
-import { AttendanceStats } from '@/components/timetable/attendance-stats';
-import { AttendancePredictions } from '@/components/timetable/attendance-predictions';
+import { StudentAttendanceCalendar } from '@/components/dashboard/student-attendance-calendar';
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { getWeeklyAttendanceAction, getAttendanceStatsAction, predictAttendanceAction } from '@/app/actions/attendance-stats';
+import { getUsersAction } from '@/app/actions/users';
 
 export default async function StudentAttendancePage() {
     const session = await getSession();
-    if (!session) redirect('/login');
+    if (!session || session.role !== 'student') redirect('/login');
 
-    const weekStart = new Date();
-    const [attendanceData, stats, predictions] = await Promise.all([
-        getWeeklyAttendanceAction(session.id, weekStart),
-        getAttendanceStatsAction(session.id),
-        predictAttendanceAction(session.id)
-    ]);
+    const users = await getUsersAction();
+    const studentData = users.find(u => u.id === session.id);
+
+    if (!studentData?.sectionId) {
+        return (
+            <div className="space-y-6">
+                <div>
+                    <h1 className="text-3xl font-bold text-foreground">My Attendance</h1>
+                    <p className="text-muted-foreground">Track and analyze your attendance records</p>
+                </div>
+                <div className="p-8 text-center border rounded-lg bg-muted/20">
+                    <p className="text-muted-foreground">You are not assigned to any section yet.</p>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="space-y-6">
@@ -23,16 +31,11 @@ export default async function StudentAttendancePage() {
                 <p className="text-muted-foreground">Track and analyze your attendance records</p>
             </div>
 
-            <AttendanceCalendar 
-                attendanceData={attendanceData}
+            <StudentAttendanceCalendar 
+                studentId={session.id}
+                studentName={session.name}
+                sectionId={studentData.sectionId}
             />
-
-            <AttendanceStats 
-                overallPercentage={stats.overallPercentage}
-                classStats={stats.classStats}
-            />
-
-            <AttendancePredictions {...predictions} />
         </div>
     );
 }
