@@ -23,15 +23,17 @@ export default function Home() {
             <Link href="#" className="hover:text-zinc-900 dark:hover:text-zinc-50 transition-colors">Pricing</Link>
           </nav>
           <div className="flex items-center gap-4">
-            <Link href="/login" className="hidden sm:block">
-              <Button variant="ghost" size="sm" className="font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50">
-                Log in
-              </Button>
+            <Link 
+              href="/login" 
+              className="hidden sm:inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 hover:bg-accent hover:text-accent-foreground h-9 px-3 text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+            >
+              Log in
             </Link>
-            <Link href="/login">
-              <Button size="sm" className="font-medium bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 shadow-sm px-5">
-                Get Started
-              </Button>
+            <Link 
+              href="/login"
+              className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-9 px-5 bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 shadow-sm"
+            >
+              Get Started
             </Link>
           </div>
         </div>
@@ -64,15 +66,17 @@ export default function Home() {
 
               {/* CTA Buttons */}
               <div className="flex flex-col sm:flex-row gap-4 w-full justify-center pt-4">
-                <Link href="/login">
-                  <Button size="lg" className="h-14 px-8 text-base rounded-full bg-zinc-900 text-white hover:bg-zinc-800 hover:shadow-lg hover:-translate-y-0.5 transition-all w-full sm:w-auto dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
-                    Launch Platform
-                  </Button>
+                <Link 
+                  href="/login"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-full text-base font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-14 px-8 bg-zinc-900 text-white hover:bg-zinc-800 hover:shadow-lg hover:-translate-y-0.5 w-full sm:w-auto dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                >
+                  Launch Platform
                 </Link>
-                <Link href="#features">
-                  <Button size="lg" variant="outline" className="h-14 px-8 text-base rounded-full border-zinc-200 bg-transparent hover:bg-zinc-50 hover:text-zinc-900 w-full sm:w-auto dark:border-zinc-800 dark:hover:bg-zinc-900 dark:hover:text-zinc-50 transition-all">
-                    View Interactive Demo
-                  </Button>
+                <Link 
+                  href="#features"
+                  className="inline-flex items-center justify-center whitespace-nowrap rounded-full text-base font-medium ring-offset-background transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 h-14 px-8 border border-zinc-200 bg-transparent hover:bg-zinc-50 hover:text-zinc-900 w-full sm:w-auto dark:border-zinc-800 dark:hover:bg-zinc-900 dark:hover:text-zinc-50"
+                >
+                  View Interactive Demo
                 </Link>
               </div>
 

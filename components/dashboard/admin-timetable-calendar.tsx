@@ -12,7 +12,8 @@ import {
     getSectionsAction
 } from '@/app/actions/timetable';
 import { getUsersAction } from '@/app/actions/users';
-import { TimeSlot, Section } from '@/lib/db';
+import { getHolidaysAction, saveHolidayAction, deleteHolidayAction } from '@/app/actions/holidays';
+import { TimeSlot, Section, Holiday } from '@/lib/db';
 import { User } from '@/lib/storage';
 import { toast } from 'sonner';
 import {
@@ -48,10 +49,11 @@ interface DraggedSlot {
     originalDay: string;
 }
 
-interface Holiday {
-    date: string;
-    message: string;
-}
+// Use Holiday type from db
+// interface Holiday {
+//     date: string;
+//     message: string;
+// }
 
 interface WeekTemplate {
     id: string;
@@ -135,14 +137,9 @@ export function AdminTimetableCalendar() {
         setLoading(false);
     };
 
-    const loadHolidays = () => {
-        const stored = localStorage.getItem('timetable_holidays');
-        if (stored) setHolidays(JSON.parse(stored));
-    };
-
-    const saveHolidays = (newHolidays: Holiday[]) => {
-        localStorage.setItem('timetable_holidays', JSON.stringify(newHolidays));
-        setHolidays(newHolidays);
+    const loadHolidays = async () => {
+        const holidaysData = await getHolidaysAction();
+        setHolidays(holidaysData);
     };
 
     const loadTemplates = () => {
@@ -284,22 +281,31 @@ export function AdminTimetableCalendar() {
         );
     };
 
-    const handleAddHoliday = () => {
+    const handleAddHoliday = async () => {
         if (!holidayForm.date || !holidayForm.message) {
             toast.error('Please fill all fields');
             return;
         }
 
-        const newHolidays = [...holidays, holidayForm];
-        saveHolidays(newHolidays);
-        setHolidayForm({ date: '', message: '' });
-        setShowHolidayForm(false);
-        toast.success('Holiday added');
+        const result = await saveHolidayAction(holidayForm.date, holidayForm.message);
+        if (result.success) {
+            await loadHolidays();
+            setHolidayForm({ date: '', message: '' });
+            setShowHolidayForm(false);
+            toast.success('Holiday added');
+        } else {
+            toast.error(result.error || 'Failed to add holiday');
+        }
     };
 
-    const handleRemoveHoliday = (date: string) => {
-        saveHolidays(holidays.filter(h => h.date !== date));
-        toast.success('Holiday removed');
+    const handleRemoveHoliday = async (date: string) => {
+        const result = await deleteHolidayAction(date);
+        if (result.success) {
+            await loadHolidays();
+            toast.success('Holiday removed');
+        } else {
+            toast.error(result.error || 'Failed to remove holiday');
+        }
     };
 
     const handleSaveAsTemplate = () => {

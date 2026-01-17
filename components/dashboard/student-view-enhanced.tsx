@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScannerWithPhoto } from '@/components/dashboard/scanner-with-photo';
+import { UpcomingHolidays } from '@/components/dashboard/upcoming-holidays';
 import { toast } from 'sonner';
 import { CheckCircle, History, Loader2, Camera } from 'lucide-react';
 import { markAttendanceAction, getActiveSessionAction, getAttendanceAction } from '@/app/actions/attendance';
@@ -141,6 +142,9 @@ export function StudentViewEnhanced({ studentId, studentName }: { studentId: str
                         </CardContent>
                     </Card>
                 )}
+                
+                {/* Upcoming Holidays */}
+                <UpcomingHolidays limit={3} />
             </div>
 
             <div className="space-y-6">

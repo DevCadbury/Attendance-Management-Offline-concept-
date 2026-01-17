@@ -2,6 +2,9 @@ import { StudentTimetableViewEnhanced } from '@/components/dashboard/student-tim
 import { getSession } from '@/lib/auth';
 import { getUserById } from '@/lib/storage';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function StudentTimetablePage() {
     const session = await getSession();
     if (!session) return null;

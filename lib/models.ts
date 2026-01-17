@@ -149,6 +149,23 @@ disputeSchema.index({ sessionId: 1 });
 disputeSchema.index({ studentId: 1 });
 disputeSchema.index({ status: 1 });
 
+// Holiday Schema
+export interface IHoliday {
+    id: string;
+    date: string; // YYYY-MM-DD format
+    message: string;
+    createdAt: number;
+}
+
+const holidaySchema = new Schema<IHoliday>({
+    id: { type: String, required: true, unique: true },
+    date: { type: String, required: true },
+    message: { type: String, required: true },
+    createdAt: { type: Number, required: true }
+});
+
+holidaySchema.index({ date: 1 });
+
 // Settings Schema
 export interface ISettings {
     id: string;
@@ -171,4 +188,5 @@ export const AttendanceModel = (mongoose.models.Attendance as Model<IAttendance>
 export const SectionModel = (mongoose.models.Section as Model<ISection>) || mongoose.model<ISection>('Section', sectionSchema);
 export const TimeSlotModel = (mongoose.models.TimeSlot as Model<ITimeSlot>) || mongoose.model<ITimeSlot>('TimeSlot', timeSlotSchema);
 export const DisputeModel = (mongoose.models.Dispute as Model<IDispute>) || mongoose.model<IDispute>('Dispute', disputeSchema);
+export const HolidayModel = (mongoose.models.Holiday as Model<IHoliday>) || mongoose.model<IHoliday>('Holiday', holidaySchema);
 export const SettingsModel = (mongoose.models.Settings as Model<ISettings>) || mongoose.model<ISettings>('Settings', settingsSchema);

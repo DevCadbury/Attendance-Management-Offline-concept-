@@ -84,6 +84,9 @@ export function WeeklyTimetableGrid({ timetableData, title = "Weekly Timetable" 
 
     const dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 
+    // Check if there's any data at all
+    const hasAnyData = timetableData.some(day => day.slots && day.slots.length > 0);
+
     return (
         <Card className="w-full">
             <CardHeader>
@@ -109,6 +112,15 @@ export function WeeklyTimetableGrid({ timetableData, title = "Weekly Timetable" 
                 </p>
             </CardHeader>
             <CardContent className="p-2 sm:p-6">
+                {!hasAnyData ? (
+                    <div className="flex flex-col items-center justify-center py-12 text-center">
+                        <Calendar className="h-16 w-16 text-muted-foreground/40 mb-4" />
+                        <h3 className="text-lg font-semibold text-foreground mb-2">No Timetable Set</h3>
+                        <p className="text-sm text-muted-foreground max-w-md">
+                            Your timetable hasn't been created yet. Please contact your administrator to set up your weekly schedule.
+                        </p>
+                    </div>
+                ) : (
                 <div className="overflow-x-auto">
                     <div className="min-w-[800px]">
                         {/* Header Row */}
@@ -197,6 +209,7 @@ export function WeeklyTimetableGrid({ timetableData, title = "Weekly Timetable" 
                         ))}
                     </div>
                 </div>
+                )}
             </CardContent>
         </Card>
     );

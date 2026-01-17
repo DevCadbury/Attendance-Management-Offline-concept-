@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { QRCodeDisplay } from '@/components/dashboard/qr-code';
+import { UpcomingHolidays } from '@/components/dashboard/upcoming-holidays';
 import { toast } from 'sonner';
 import { Users, Clock, CheckCircle, RefreshCw, ExternalLink } from 'lucide-react';
 import { startSessionAction, endSessionAction, getAttendanceAction, rotateQRCodeAction } from '@/app/actions/attendance';
@@ -144,6 +145,9 @@ export function TeacherView({ teacherId }: { teacherId: string }) {
                         )}
                     </CardContent>
                 </Card>
+                
+                {/* Upcoming Holidays */}
+                <UpcomingHolidays limit={3} />
             </div>
 
             <div className="space-y-6">

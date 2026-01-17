@@ -205,6 +205,7 @@ export async function updateAttendanceAction(recordId: string, status: 'present'
         revalidatePath('/admin');
         revalidatePath('/admin/reports');
         revalidatePath('/teacher');
+        revalidatePath('/student');
         return { success: true, message: 'Attendance updated successfully' };
     } catch (error) {
         return { success: false, error: 'Failed to update attendance' };
@@ -216,6 +217,8 @@ export async function deleteAttendanceAction(recordId: string) {
         await deleteAttendanceRecord(recordId);
         revalidatePath('/admin');
         revalidatePath('/admin/reports');
+        revalidatePath('/teacher');
+        revalidatePath('/student');
         return { success: true, message: 'Attendance record deleted' };
     } catch (error) {
         return { success: false, error: 'Failed to delete attendance' };

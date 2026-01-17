@@ -5,12 +5,14 @@ import {
     SectionModel,
     TimeSlotModel,
     DisputeModel,
+    HolidayModel,
     SettingsModel,
     ISession,
     IAttendance,
     ISection,
     ITimeSlot,
     IDispute,
+    IHoliday,
     ISettings
 } from './models';
 
@@ -20,6 +22,7 @@ export type Attendance = IAttendance;
 export type Section = ISection;
 export type TimeSlot = ITimeSlot;
 export type Dispute = IDispute;
+export type Holiday = IHoliday;
 export type Settings = ISettings;
 
 // ============= SESSIONS =============
@@ -416,6 +419,47 @@ export async function getUnlockedSessions(): Promise<Session[]> {
             { unlockedByAdmin: true }
         ]
     }).lean();
+}
+
+// ============= HOLIDAYS =============
+export async function getHolidays(): Promise<Holiday[]> {
+    await connectDB();
+    const holidays = await HolidayModel.find({}).lean();
+    return holidays.map(h => ({
+        id: h.id,
+        date: h.date,
+        message: h.message,
+        createdAt: h.createdAt
+    }));
+}
+
+export async function saveHoliday(holiday: Holiday): Promise<void> {
+    await connectDB();
+    await HolidayModel.findOneAndUpdate(
+        { id: holiday.id },
+        holiday,
+        { upsert: true, new: true }
+    );
+}
+
+export async function deleteHoliday(date: string): Promise<void> {
+    await connectDB();
+    await HolidayModel.deleteMany({ date });
+}
+
+export async function getUpcomingHolidays(limit: number = 5): Promise<Holiday[]> {
+    await connectDB();
+    const today = new Date().toISOString().split('T')[0];
+    const holidays = await HolidayModel.find({
+        date: { $gte: today }
+    }).sort({ date: 1 }).limit(limit).lean();
+    
+    return holidays.map(h => ({
+        id: h.id,
+        date: h.date,
+        message: h.message,
+        createdAt: h.createdAt
+    }));
 }
 
 // Initialize database with default admin if empty

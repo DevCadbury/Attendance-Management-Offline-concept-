@@ -2,6 +2,9 @@ import { TeacherView } from '@/components/dashboard/teacher-view';
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function TeacherPage({ 
     searchParams 
 }: { 

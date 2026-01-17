@@ -86,6 +86,7 @@ export async function approveDisputeAction(disputeId: string, adminId: string) {
 
         revalidatePath('/admin');
         revalidatePath('/teacher');
+        revalidatePath('/student');
         return { success: true, message: 'Dispute approved. Teacher notified and session unlocked.' };
     } catch (error) {
         return { success: false, error: 'Failed to approve dispute' };
@@ -108,6 +109,7 @@ export async function rejectDisputeAction(disputeId: string, adminId: string) {
 
         await saveDispute(dispute);
         revalidatePath('/admin');
+        revalidatePath('/student');
         return { success: true, message: 'Dispute rejected.' };
     } catch (error) {
         return { success: false, error: 'Failed to reject dispute' };
@@ -129,6 +131,7 @@ export async function unlockSessionForEditingAction(sessionId: string) {
 
         revalidatePath('/admin');
         revalidatePath('/teacher');
+        revalidatePath('/student');
         return { success: true, message: 'Session unlocked for teacher editing' };
     } catch (error) {
         return { success: false, error: 'Failed to unlock session' };
@@ -150,6 +153,7 @@ export async function lockSessionAction(sessionId: string) {
 
         revalidatePath('/admin');
         revalidatePath('/teacher');
+        revalidatePath('/student');
         return { success: true, message: 'Session locked' };
     } catch (error) {
         return { success: false, error: 'Failed to lock session' };
