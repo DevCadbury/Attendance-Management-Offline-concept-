@@ -601,7 +601,7 @@ export function SessionAttendanceManager({
                                                                 <Button
                                                                     size="sm"
                                                                     variant="destructive"
-                                                                    onClick={() => setRejectingDispute(dispute.id)}
+                                                                    onClick={() => setRejectingDispute({ disputeId: dispute.id, studentName: dispute.studentName })}
                                                                 >
                                                                     Reject Dispute
                                                                 </Button>

@@ -152,17 +152,15 @@ export function TeacherTimetableGrid({ timetableData, teacherId, title = "My Tea
                     slot.id
                 );
 
-                if (result.success === false) {
-                    toast.error(result.error || 'Failed to start session');
-                } else {
+                if (result.success && result.session) {
                     if (result.alreadyExists) {
                         toast.info('Opening existing attendance session');
                     } else {
                         toast.success('Attendance session started');
                     }
-                    if (result.session) {
-                        router.push(`/teacher/session/${result.session.id}`);
-                    }
+                    router.push(`/teacher/session/${result.session.id}`);
+                } else {
+                    toast.error('Failed to start session');
                 }
             } catch (error) {
                 toast.error('Failed to start attendance session');
