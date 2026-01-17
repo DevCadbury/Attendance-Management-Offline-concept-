@@ -4,6 +4,10 @@ import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getSlotsByTeacherAction, getWeeklyTimetableAction } from '@/app/actions/timetable';
 
+// Force dynamic rendering to prevent caching
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function TeacherTimetablePage() {
     const session = await getSession();
     if (!session) redirect('/login');

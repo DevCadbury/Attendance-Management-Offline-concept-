@@ -14,6 +14,7 @@ import {
 } from '@/lib/db';
 import { revalidatePath } from 'next/cache';
 import { getUsers, updateUser } from '@/lib/storage';
+import { getTimetableForDateAction } from './timetable-templates';
 
 // Section Management
 export async function createSectionAction(name: string) {
@@ -147,14 +148,6 @@ export async function getSlotsByTeacherAction(teacherId: string) {
 
 export async function getWeeklyTimetableAction(userId: string, role: 'teacher' | 'student') {
     try {
-        const slots = role === 'teacher' 
-            ? await getSlotsByTeacher(userId)
-            : await getSlotsBySection(userId); // For student, pass their section ID
-        
-        // Group slots by day of week
-        const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
-        const timetableData = [];
-        
         // Get current week dates
         const today = new Date();
         const currentDay = today.getDay(); // 0 = Sunday
@@ -162,23 +155,30 @@ export async function getWeeklyTimetableAction(userId: string, role: 'teacher' |
         const monday = new Date(today);
         monday.setDate(today.getDate() + mondayOffset);
         
+        const weekDays = ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+        const timetableData = [];
+        
+        // For each day of the week, get the timetable (including overrides)
         for (let i = 0; i < 7; i++) {
             const date = new Date(monday);
             date.setDate(monday.getDate() + i);
+            const dateStr = date.toISOString().split('T')[0];
             
-            const dayName = weekDays[i];
-            const daySlots = slots.filter(slot => slot.day === dayName);
+            // Get timetable for this specific date (checks overrides first)
+            const daySlots = role === 'teacher'
+                ? await getTimetableForDateAction(dateStr, undefined, userId)
+                : await getTimetableForDateAction(dateStr, userId); // For students, userId is sectionId
             
             timetableData.push({
-                date: date.toISOString().split('T')[0],
-                slots: daySlots.map(slot => ({
+                date: dateStr,
+                slots: daySlots.map((slot: any) => ({
                     id: slot.id,
                     subject: slot.subject,
-                    teacherId: slot.teacherId,
+                    teacherId: slot.teacher || slot.teacherId,
                     startTime: slot.startTime,
                     endTime: slot.endTime,
                     sectionId: slot.sectionId,
-                    day: slot.day
+                    day: weekDays[i]
                 }))
             });
         }
