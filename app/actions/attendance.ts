@@ -104,6 +104,14 @@ export async function markAttendanceAction(
         return { success: false, error: 'Session is not active' };
     }
 
+    // Check if student already marked attendance in this session
+    const existingAttendance = await getAttendanceBySession(sessionId);
+    const alreadyMarked = existingAttendance.some(a => a.studentId === studentId);
+    
+    if (alreadyMarked) {
+        return { success: false, error: 'You have already marked attendance for this session' };
+    }
+
     const record: Attendance = {
         id: Math.random().toString(36).substring(7),
         sessionId,
@@ -221,23 +229,21 @@ export async function getAllAttendanceAction() {
 export async function getAllSessionsAction() {
     const sessions = await getSessions();
     
-    // Auto-lock sessions based on 48-hour rule (NOT 24 hours)
-    // This gives teachers and admins time to make corrections
+    // Auto-lock sessions 24 hours after session ends
     const now = Date.now();
     let updated = false;
     
     for (const session of sessions) {
-        if (!session.locked && !session.active) {
-            // Check if 48 hours have passed since session ended (or started if no end time)
-            const referenceTime = session.endTime || session.startTime;
-            const hoursSinceReference = (now - referenceTime) / (1000 * 60 * 60);
+        if (!session.locked && !session.active && session.endTime) {
+            // Check if 24 hours have passed since session ended
+            const hoursSinceEnd = (now - session.endTime) / (1000 * 60 * 60);
             
             // Only auto-lock if:
-            // 1. Session is not active AND
-            // 2. 48 hours have passed since end (or start) AND
+            // 1. Session has ended (endTime exists) AND
+            // 2. 24 hours have passed since session ended AND
             // 3. Admin hasn't unlocked it AND
             // 4. No lockUntil time is set (meaning no pending disputes)
-            const shouldLock = hoursSinceReference >= 48 && !session.unlockedByAdmin && !session.lockUntil;
+            const shouldLock = hoursSinceEnd >= 24 && !session.unlockedByAdmin && !session.lockUntil;
             
             if (shouldLock) {
                 session.locked = true;

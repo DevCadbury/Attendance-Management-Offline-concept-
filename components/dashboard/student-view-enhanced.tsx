@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ScannerWithPhoto } from '@/components/dashboard/scanner-with-photo';
 import { toast } from 'sonner';
 import { CheckCircle, History, Loader2, Camera } from 'lucide-react';
-import { markAttendanceAction, getActiveSessionAction } from '@/app/actions/attendance';
+import { markAttendanceAction, getActiveSessionAction, getAttendanceAction } from '@/app/actions/attendance';
 import { Session, Attendance } from '@/lib/db';
 import { compressAndUploadImage } from '@/lib/cloudinary';
 
@@ -13,17 +13,29 @@ export function StudentViewEnhanced({ studentId, studentName }: { studentId: str
     const [activeSession, setActiveSession] = useState<Session | null>(null);
     const [attendanceHistory, setAttendanceHistory] = useState<Attendance[]>([]);
     const [loading, setLoading] = useState(false);
+    const [alreadyMarked, setAlreadyMarked] = useState(false);
 
     useEffect(() => {
         const checkSession = async () => {
             const session = await getActiveSessionAction();
             setActiveSession(session);
+            
+            // Check if already marked for this session
+            if (session) {
+                const records = await getAttendanceAction(session.id);
+                const marked = records.some(r => r.studentId === studentId);
+                setAlreadyMarked(marked);
+                
+                // Load attendance history for this student in this session
+                const studentRecords = records.filter(r => r.studentId === studentId);
+                setAttendanceHistory(studentRecords);
+            }
         };
 
         checkSession();
         const interval = setInterval(checkSession, 5000);
         return () => clearInterval(interval);
-    }, []);
+    }, [studentId]);
 
     const handleScan = async (qrData: string, photo?: string) => {
         if (!activeSession) {
@@ -89,6 +101,16 @@ export function StudentViewEnhanced({ studentId, studentName }: { studentId: str
                             <div className="flex flex-col items-center justify-center h-64 text-center">
                                 <Loader2 className="h-8 w-8 animate-spin text-primary mb-4" />
                                 <p className="text-sm text-muted-foreground">Marking attendance...</p>
+                            </div>
+                        ) : alreadyMarked ? (
+                            <div className="flex flex-col items-center justify-center h-64 text-center p-6 border-2 border-green-500/50 rounded-lg bg-green-500/10">
+                                <div className="mx-auto w-16 h-16 rounded-full bg-green-600 flex items-center justify-center mb-4">
+                                    <CheckCircle className="h-8 w-8 text-white" />
+                                </div>
+                                <h3 className="font-semibold text-lg text-green-600 dark:text-green-400">Already Marked!</h3>
+                                <p className="text-sm text-muted-foreground mt-2">
+                                    You have already marked your attendance for this session.
+                                </p>
                             </div>
                         ) : activeSession ? (
                             <ScannerWithPhoto onScan={handleScan} active={true} requirePhoto={true} />

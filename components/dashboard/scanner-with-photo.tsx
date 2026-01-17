@@ -165,12 +165,10 @@ export function ScannerWithPhoto({ onScan, active, requirePhoto = true }: Scanne
                         setScanning(false);
                         setScannedQR(decodedText);
                         
-                        // If photo is not required or already captured, submit immediately
-                        if (!requirePhoto || capturedPhoto) {
-                            onScan(decodedText, capturedPhoto || undefined);
-                            setCapturedPhoto(null);
-                            setScannedQR(null);
-                        }
+                        // Always auto-submit immediately after QR scan
+                        onScan(decodedText, capturedPhoto || undefined);
+                        setCapturedPhoto(null);
+                        setScannedQR(null);
                     }).catch(console.error);
                 },
                 (errorMessage) => {
@@ -185,17 +183,6 @@ export function ScannerWithPhoto({ onScan, active, requirePhoto = true }: Scanne
             );
         }, 100);
     };
-
-    const submitAttendance = () => {
-        if (scannedQR) {
-            onScan(scannedQR, capturedPhoto || undefined);
-            setCapturedPhoto(null);
-            setScannedQR(null);
-        }
-    };
-
-    // If we need both photo and QR, and have scanned QR but no photo yet
-    const needsPhoto = requirePhoto && scannedQR && !capturedPhoto;
 
     return (
         <div className="flex flex-col items-center justify-center space-y-4 w-full max-w-md mx-auto">
@@ -243,28 +230,20 @@ export function ScannerWithPhoto({ onScan, active, requirePhoto = true }: Scanne
             )}
 
             {/* Photo Preview */}
-            {capturedPhoto && !photoCapture && (
+            {capturedPhoto && !photoCapture && !scanning && !scannedQR && (
                 <div className="w-full space-y-2">
                     <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden border-2 border-green-500">
                         <img src={capturedPhoto} alt="Captured" className="w-full h-full object-cover" />
                     </div>
-                    <div className="flex gap-2">
-                        <Button onClick={retakePhoto} variant="outline" className="flex-1">
-                            Retake Photo
-                        </Button>
-                        {scannedQR && (
-                            <Button onClick={submitAttendance} className="flex-1">
-                                Submit Attendance
-                            </Button>
-                        )}
-                    </div>
+                    <Button onClick={retakePhoto} variant="outline" className="w-full">
+                        Retake Photo
+                    </Button>
                 </div>
             )}
 
             {/* QR Scanner UI */}
-            {!photoCapture && !needsPhoto && (
-                <div className="w-full">
-                    <div className="relative w-full aspect-square bg-black/5 rounded-lg overflow-hidden border-2 border-dashed border-zinc-700 flex items-center justify-center">
+            {!photoCapture && (
+                <div className="w-full">\n                    <div className="relative w-full aspect-square bg-black/5 rounded-lg overflow-hidden border-2 border-dashed border-zinc-700 flex items-center justify-center">
                         {!scanning && !scannedQR ? (
                             <div className="text-center p-6 space-y-4">
                                 <div className="mx-auto w-16 h-16 rounded-full bg-zinc-800 flex items-center justify-center animate-pulse">
@@ -288,18 +267,6 @@ export function ScannerWithPhoto({ onScan, active, requirePhoto = true }: Scanne
                             </div>
                         ) : scanning ? (
                             <div id="qr-reader" className="w-full h-full"></div>
-                        ) : scannedQR ? (
-                            <div className="text-center p-6 space-y-4">
-                                <div className="mx-auto w-16 h-16 rounded-full bg-green-600 flex items-center justify-center">
-                                    <span className="text-3xl">✓</span>
-                                </div>
-                                <p className="text-sm font-medium">QR Code Scanned!</p>
-                                {requirePhoto && !capturedPhoto && (
-                                    <Button onClick={() => startPhotoCapture()} className="w-full">
-                                        📷 Take Your Photo
-                                    </Button>
-                                )}
-                            </div>
                         ) : null}
 
                         {scanning && (
