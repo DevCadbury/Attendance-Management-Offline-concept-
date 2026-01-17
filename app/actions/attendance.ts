@@ -49,11 +49,8 @@ export async function startSessionAction(
     if (existingSession) {
         existingSession.active = false;
         existingSession.endTime = Date.now();
-        // Auto-lock if session is older than 24 hours
-        const hoursSinceStart = (Date.now() - existingSession.startTime) / (1000 * 60 * 60);
-        if (hoursSinceStart >= 24) {
-            existingSession.locked = true;
-        }
+        // Don't auto-lock old sessions when starting new ones
+        // The 48-hour rule in getAllSessionsAction will handle locking
         await saveSession(existingSession);
     }
 
@@ -82,7 +79,9 @@ export async function endSessionAction(sessionId: string) {
     if (session) {
         session.active = false;
         session.endTime = Date.now();
-        session.locked = true; // Auto-lock when session ends
+        // Don't auto-lock immediately when session ends
+        // Teacher needs time to make manual corrections
+        // Will auto-lock after 48 hours
         await saveSession(session);
         revalidatePath('/teacher');
         revalidatePath('/student');
@@ -130,20 +129,8 @@ export async function getActiveSessionAction() {
 
 export async function getSessionsByTeacherAction(teacherId: string) {
     const sessions = await getSessions();
-    // Auto-lock sessions older than 24 hours
-    const now = Date.now();
-    const updated = await Promise.all(sessions.map(async (session) => {
-        if (!session.locked && session.teacherId === teacherId) {
-            const hoursSinceStart = (now - session.startTime) / (1000 * 60 * 60);
-            if (hoursSinceStart >= 24) {
-                session.locked = true;
-                await saveSession(session);
-            }
-        }
-        return session;
-    }));
-    
-    return updated.filter(s => s.teacherId === teacherId);
+    // Don't auto-lock here - getAllSessionsAction handles it with 48-hour rule
+    return sessions.filter(s => s.teacherId === teacherId);
 }
 
 export async function getSessionBySlotAction(slotId: string, teacherId: string, date: string) {
@@ -234,23 +221,26 @@ export async function getAllAttendanceAction() {
 export async function getAllSessionsAction() {
     const sessions = await getSessions();
     
-    // Auto-lock sessions based on 24-hour rule or lockUntil expiry
+    // Auto-lock sessions based on 48-hour rule (NOT 24 hours)
+    // This gives teachers and admins time to make corrections
     const now = Date.now();
     let updated = false;
     
     for (const session of sessions) {
-        if (!session.locked) {
-            // Check if 24 hours have passed since start time
-            const hoursSinceStart = (now - session.startTime) / (1000 * 60 * 60);
+        if (!session.locked && !session.active) {
+            // Check if 48 hours have passed since session ended (or started if no end time)
+            const referenceTime = session.endTime || session.startTime;
+            const hoursSinceReference = (now - referenceTime) / (1000 * 60 * 60);
             
-            // Auto-lock if:
-            // 1. 24 hours have passed since session start, OR
-            // 2. lockUntil time has passed (if dispute was raised)
-            const shouldLock = hoursSinceStart >= 24 || (session.lockUntil && now > session.lockUntil);
+            // Only auto-lock if:
+            // 1. Session is not active AND
+            // 2. 48 hours have passed since end (or start) AND
+            // 3. Admin hasn't unlocked it AND
+            // 4. No lockUntil time is set (meaning no pending disputes)
+            const shouldLock = hoursSinceReference >= 48 && !session.unlockedByAdmin && !session.lockUntil;
             
-            if (shouldLock && !session.unlockedByAdmin) {
+            if (shouldLock) {
                 session.locked = true;
-                session.lockUntil = undefined; // Clear lockUntil after locking
                 await saveSession(session);
                 updated = true;
             }

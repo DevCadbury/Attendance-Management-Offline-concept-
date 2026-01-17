@@ -178,48 +178,96 @@ export function SessionAttendanceManager({
         const student = students.find(s => s.id === studentId);
         if (!student) return;
 
+        // Check if there's a pending dispute for this student
+        const dispute = disputes.find(d => 
+            d.studentId === studentId && 
+            d.status === 'pending'
+        );
+
         if (status === 'present') {
-            // Use markAttendanceAction for present
-            const result = await markAttendanceAction(
-                sessionId,
-                studentId,
-                student.name,
-                undefined,
-                'teacher'
-            );
-
-            if (result.success) {
-                toast.success(`Marked ${student.name} as present`);
-                loadData();
-            } else {
-                toast.error(result.error);
-            }
-        } else {
-            // For absent, we need to create a record first as present then update to absent
-            const markResult = await markAttendanceAction(
-                sessionId,
-                studentId,
-                student.name,
-                undefined,
-                'teacher'
-            );
-
-            if (markResult.success) {
-                // Reload data to get the new record
-                const attendanceData = await getAttendanceAction(sessionId);
-                const newRecord = attendanceData.find(a => a.studentId === studentId);
-                
-                if (newRecord) {
-                    const updateResult = await updateAttendanceAction(newRecord.id, 'absent', false);
-                    if (updateResult.success) {
-                        toast.success(`Marked ${student.name} as absent`);
-                        loadData();
-                    } else {
-                        toast.error(updateResult.error);
+            // Check if attendance record already exists
+            const existingRecord = attendance.find(a => a.studentId === studentId);
+            
+            if (existingRecord) {
+                // Update existing record to present
+                const updateResult = await updateAttendanceAction(existingRecord.id, 'present', false);
+                if (updateResult.success) {
+                    toast.success(`Marked ${student.name} as present`);
+                    
+                    // Auto-approve dispute if exists
+                    if (dispute) {
+                        await teacherApproveDisputeAction(dispute.id, teacherId);
+                        toast.success('Dispute automatically approved');
                     }
+                    
+                    loadData();
+                } else {
+                    toast.error(updateResult.error);
                 }
             } else {
-                toast.error(markResult.error);
+                // Create new attendance record
+                const result = await markAttendanceAction(
+                    sessionId,
+                    studentId,
+                    student.name,
+                    undefined,
+                    'teacher'
+                );
+
+                if (result.success) {
+                    toast.success(`Marked ${student.name} as present`);
+                    
+                    // Auto-approve dispute if exists
+                    if (dispute) {
+                        await teacherApproveDisputeAction(dispute.id, teacherId);
+                        toast.success('Dispute automatically approved');
+                    }
+                    
+                    loadData();
+                } else {
+                    toast.error(result.error);
+                }
+            }
+        } else {
+            // For absent status
+            const existingRecord = attendance.find(a => a.studentId === studentId);
+            
+            if (existingRecord) {
+                // Update existing record to absent
+                const updateResult = await updateAttendanceAction(existingRecord.id, 'absent', false);
+                if (updateResult.success) {
+                    toast.success(`Marked ${student.name} as absent`);
+                    loadData();
+                } else {
+                    toast.error(updateResult.error);
+                }
+            } else {
+                // Create record as present first, then update to absent
+                const markResult = await markAttendanceAction(
+                    sessionId,
+                    studentId,
+                    student.name,
+                    undefined,
+                    'teacher'
+                );
+
+                if (markResult.success) {
+                    // Reload data to get the new record
+                    const attendanceData = await getAttendanceAction(sessionId);
+                    const newRecord = attendanceData.find(a => a.studentId === studentId);
+                    
+                    if (newRecord) {
+                        const updateResult = await updateAttendanceAction(newRecord.id, 'absent', false);
+                        if (updateResult.success) {
+                            toast.success(`Marked ${student.name} as absent`);
+                            loadData();
+                        } else {
+                            toast.error(updateResult.error);
+                        }
+                    }
+                } else {
+                    toast.error(markResult.error);
+                }
             }
         }
     };
@@ -278,10 +326,13 @@ export function SessionAttendanceManager({
     };
 
     const canEditStudent = (studentId: string) => {
-        // Can edit if there's a pending dispute OR if attendance exists
+        // Can always edit if there's a pending dispute (allows marking present for disputed absences)
         const dispute = getStudentDispute(studentId);
+        if (dispute) return true;
+        
+        // Otherwise can edit if attendance record exists
         const record = getAttendanceRecord(studentId);
-        return dispute !== undefined || record !== undefined;
+        return record !== undefined;
     };
 
     const getStudentStatus = (studentId: string): 'present' | 'absent' | 'unmarked' => {
@@ -579,7 +630,7 @@ export function SessionAttendanceManager({
                                         </div>
                                         
                                         <div className="flex items-center gap-2">
-                                            {status === 'unmarked' ? (
+                                            {(status === 'unmarked' || dispute) && !isEditing ? (
                                                 <>
                                                     <Button
                                                         size="sm"
@@ -600,7 +651,7 @@ export function SessionAttendanceManager({
                                                         Absent
                                                     </Button>
                                                 </>
-                                            ) : isEditing && canEdit ? (
+                                            ) : isEditing && canEdit && record ? (
                                                 <>
                                                     <Button
                                                         size="sm"
@@ -618,7 +669,7 @@ export function SessionAttendanceManager({
                                                         Cancel
                                                     </Button>
                                                 </>
-                                            ) : (
+                                            ) : record ? (
                                                 <>
                                                     <span className={`flex items-center gap-1 px-3 py-1 rounded-full text-sm font-medium ${
                                                         status === 'present' 
@@ -636,7 +687,7 @@ export function SessionAttendanceManager({
                                                             <Button
                                                                 size="sm"
                                                                 variant="outline"
-                                                                onClick={() => setEditingId(record!.id)}
+                                                                onClick={() => setEditingId(record.id)}
                                                             >
                                                                 <Edit className="h-4 w-4" />
                                                             </Button>
@@ -652,7 +703,7 @@ export function SessionAttendanceManager({
                                                         </>
                                                     )}
                                                 </>
-                                            )}
+                                            ) : null}
                                         </div>
                                     </div>
                                 );
