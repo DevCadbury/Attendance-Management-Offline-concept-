@@ -123,6 +123,11 @@ export function ScannerWithPhoto({ onScan, active, requirePhoto = true }: Scanne
                     streamRef.current.getTracks().forEach(track => track.stop());
                 }
                 setPhotoCapture(false);
+                
+                // Auto-open QR scanner after photo is taken
+                setTimeout(() => {
+                    startScanning();
+                }, 500);
             }
         }
     };

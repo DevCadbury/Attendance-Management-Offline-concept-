@@ -101,23 +101,16 @@ export function SessionAttendanceManager({
     const [allSessions, setAllSessions] = useState<Session[]>([]);
     const [rejectingDispute, setRejectingDispute] = useState<{disputeId: string; studentName: string} | null>(null);
     const [rejectionMessage, setRejectionMessage] = useState('');
+    const [lastAttendanceCount, setLastAttendanceCount] = useState(0);
 
     useEffect(() => {
         loadData();
         const dataInterval = setInterval(loadData, 5000);
         
-        // Auto-rotate QR code every 5 seconds
-        const qrInterval = setInterval(() => {
-            if (session && !session.locked) {
-                handleRotateQR();
-            }
-        }, 5000);
-        
         return () => {
             clearInterval(dataInterval);
-            clearInterval(qrInterval);
         };
-    }, [sessionId, session?.locked]);
+    }, [sessionId]);
 
     const loadData = async () => {
         const [sessionData, attendanceData, usersData, sessionsData, disputesData] = await Promise.all([
@@ -130,6 +123,17 @@ export function SessionAttendanceManager({
 
         const currentSession = sessionData.find(s => s.id === sessionId);
         setSession(currentSession || null);
+        
+        // Check for new attendance entries
+        if (lastAttendanceCount > 0 && attendanceData.length > lastAttendanceCount) {
+            const newEntries = attendanceData.slice(lastAttendanceCount);
+            newEntries.forEach(entry => {
+                toast.success(`${entry.studentName} marked ${entry.status}`, {
+                    description: entry.markedBy === 'student' ? 'Scanned QR code' : 'Marked by teacher'
+                });
+            });
+        }
+        setLastAttendanceCount(attendanceData.length);
         setAttendance(attendanceData);
         
         // Filter disputes for this session
@@ -497,7 +501,7 @@ export function SessionAttendanceManager({
                                 <CardDescription>Mark attendance for individual students</CardDescription>
                             </div>
                             <div className="w-64">
-                                <div className="relative">
+                                <div className="relative flex-1 mr-4">
                                     <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         placeholder="Search students..."
@@ -506,6 +510,18 @@ export function SessionAttendanceManager({
                                         className="pl-9"
                                     />
                                 </div>
+                                {editingId && (
+                                    <Button
+                                        onClick={() => {
+                                            setEditingId(null);
+                                            toast.success('Changes saved');
+                                        }}
+                                        size="sm"
+                                    >
+                                        <Save className="h-4 w-4 mr-2" />
+                                        Save Changes
+                                    </Button>
+                                )}
                             </div>
                         </div>
                     </CardHeader>
