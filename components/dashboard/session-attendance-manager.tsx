@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { QRCodeDisplay } from '@/components/dashboard/qr-code';
 import { Scanner } from '@/components/dashboard/scanner';
+import { compressAndUploadImage } from '@/lib/cloudinary';
 import { 
     getAttendanceAction,
     endSessionAction,
@@ -103,9 +104,20 @@ export function SessionAttendanceManager({
 
     useEffect(() => {
         loadData();
-        const interval = setInterval(loadData, 5000); // Refresh every 5 seconds
-        return () => clearInterval(interval);
-    }, [sessionId]);
+        const dataInterval = setInterval(loadData, 5000);
+        
+        // Auto-rotate QR code every 5 seconds
+        const qrInterval = setInterval(() => {
+            if (session && !session.locked) {
+                handleRotateQR();
+            }
+        }, 5000);
+        
+        return () => {
+            clearInterval(dataInterval);
+            clearInterval(qrInterval);
+        };
+    }, [sessionId, session?.locked]);
 
     const loadData = async () => {
         const [sessionData, attendanceData, usersData, sessionsData, disputesData] = await Promise.all([
@@ -262,9 +274,10 @@ export function SessionAttendanceManager({
     };
 
     const canEditStudent = (studentId: string) => {
-        // Can only edit if there's a pending dispute for this student
+        // Can edit if there's a pending dispute OR if attendance exists
         const dispute = getStudentDispute(studentId);
-        return dispute !== undefined;
+        const record = getAttendanceRecord(studentId);
+        return dispute !== undefined || record !== undefined;
     };
 
     const getStudentStatus = (studentId: string): 'present' | 'absent' | 'unmarked' => {
@@ -443,9 +456,18 @@ export function SessionAttendanceManager({
                                     .map(record => (
                                         <div 
                                             key={record.id}
-                                            className="flex items-center justify-between p-3 border rounded-lg"
+                                            className="flex items-center gap-3 p-3 border rounded-lg"
                                         >
-                                            <div>
+                                            {record.photo && (
+                                                <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-green-500/30 flex-shrink-0">
+                                                    <img 
+                                                        src={record.photo} 
+                                                        alt={record.studentName}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                </div>
+                                            )}
+                                            <div className="flex-1">
                                                 <div className="font-medium">{record.studentName}</div>
                                                 <div className="text-xs text-muted-foreground">
                                                     {new Date(record.timestamp).toLocaleTimeString()}
@@ -505,34 +527,39 @@ export function SessionAttendanceManager({
                                             'border-border'
                                         } ${dispute ? 'ring-2 ring-yellow-500' : ''}`}
                                     >
-                                        <div className="flex-1">
-                                            <div className="flex items-center gap-2">
-                                                <div className="font-medium">{student.name}</div>
+                                        <div className="flex items-center gap-3">
+                                            {record?.photo && (
+                                                <div className="w-12 h-12 rounded-full overflow-hidden border-2 border-primary/30 flex-shrink-0">
+                                                    <img 
+                                                        src={record.photo} 
+                                                        alt={student.name}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                </div>
+                                            )}
+                                            <div className="flex-1">
+                                                <div className="flex items-center gap-2">
+                                                    <div className="font-medium">{student.name}</div>
+                                                    {dispute && (
+                                                        <span className="text-xs px-2 py-0.5 rounded bg-yellow-500 text-white">
+                                                            Disputed
+                                                        </span>
+                                                    )}
+                                                </div>
+                                                <div className="text-sm text-muted-foreground">{student.email}</div>
                                                 {dispute && (
-                                                    <span className="text-xs px-2 py-0.5 rounded bg-yellow-500 text-white">
-                                                        Disputed
-                                                    </span>
+                                                    <div className="text-xs text-yellow-700 dark:text-yellow-400 mt-1 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded">
+                                                        <strong>Reason:</strong> {dispute.reason}
+                                                    </div>
+                                                )}
+                                                {record && (
+                                                    <div className="text-xs text-muted-foreground mt-1">
+                                                        <Clock className="h-3 w-3 inline mr-1" />
+                                                        {new Date(record.timestamp).toLocaleString()}
+                                                        {record.markedBy && ` • Marked by ${record.markedBy}`}
+                                                    </div>
                                                 )}
                                             </div>
-                                            <div className="text-sm text-muted-foreground">{student.email}</div>
-                                            {dispute && (
-                                                <div className="text-xs text-yellow-700 dark:text-yellow-400 mt-1 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded">
-                                                    <strong>Reason:</strong> {dispute.reason}
-                                                </div>
-                                            )}
-                                            {record && (
-                                                <div className="text-xs text-muted-foreground mt-1">
-                                                    <Clock className="h-3 w-3 inline mr-1" />
-                                                    {new Date(record.timestamp).toLocaleString()}
-                                                    {record.markedBy && ` • Marked by ${record.markedBy}`}
-                                                </div>
-                                            )}
-                                            {!canEdit && status !== 'unmarked' && !dispute && (
-                                                <div className="text-xs text-muted-foreground mt-1">
-                                                    <Lock className="h-3 w-3 inline mr-1" />
-                                                    No active dispute - editing locked
-                                                </div>
-                                            )}
                                         </div>
                                         
                                         <div className="flex items-center gap-2">

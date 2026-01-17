@@ -7,6 +7,7 @@ import { toast } from 'sonner';
 import { CheckCircle, History, Loader2, Camera } from 'lucide-react';
 import { markAttendanceAction, getActiveSessionAction } from '@/app/actions/attendance';
 import { Session, Attendance } from '@/lib/db';
+import { compressAndUploadImage } from '@/lib/cloudinary';
 
 export function StudentViewEnhanced({ studentId, studentName }: { studentId: string, studentName: string }) {
     const [activeSession, setActiveSession] = useState<Session | null>(null);
@@ -37,7 +38,16 @@ export function StudentViewEnhanced({ studentId, studentName }: { studentId: str
 
         setLoading(true);
         try {
-            const result = await markAttendanceAction(activeSession.id, studentId, studentName, photo);
+            // Compress photo before uploading
+            let compressedPhoto = photo;
+            if (photo) {
+                const compressed = await compressAndUploadImage(photo);
+                if (compressed) {
+                    compressedPhoto = compressed;
+                }
+            }
+            
+            const result = await markAttendanceAction(activeSession.id, studentId, studentName, compressedPhoto);
             if (result.success) {
                 toast.success('Attendance marked successfully! 🎉');
                 setAttendanceHistory(prev => [{
@@ -47,7 +57,7 @@ export function StudentViewEnhanced({ studentId, studentName }: { studentId: str
                     studentName,
                     timestamp: Date.now(),
                     status: 'present',
-                    photo,
+                    photo: compressedPhoto,
                     markedBy: 'student'
                 }, ...prev]);
             } else {

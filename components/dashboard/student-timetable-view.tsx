@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { ScannerWithPhoto } from '@/components/dashboard/scanner-with-photo';
+import { compressAndUploadImage } from '@/lib/cloudinary';
 import {
     markAttendanceAction,
     getActiveSessionAction,
@@ -70,7 +71,16 @@ export function StudentTimetableView({ studentId, studentName, sectionId }: { st
 
         setLoading(true);
         try {
-            const result = await markAttendanceAction(activeSession.id, studentId, studentName, photo, 'student');
+            // Compress photo before uploading
+            let compressedPhoto = photo;
+            if (photo) {
+                const compressed = await compressAndUploadImage(photo);
+                if (compressed) {
+                    compressedPhoto = compressed;
+                }
+            }
+            
+            const result = await markAttendanceAction(activeSession.id, studentId, studentName, compressedPhoto, 'student');
             if (result.success) {
                 toast.success('Attendance marked successfully! 🎉');
                 loadData();
