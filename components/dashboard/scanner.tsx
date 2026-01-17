@@ -17,8 +17,10 @@ export function Scanner({ onScan, active }: ScannerProps) {
     const scannerRef = useRef<Html5QrcodeScanner | null>(null);
 
     useEffect(() => {
-        // Check camera permission on mount
-        checkCameraPermission();
+        // Auto-start scanning when component mounts and is active
+        if (active && !scanning) {
+            startScanning();
+        }
         
         // Cleanup scanner on unmount
         return () => {
@@ -26,9 +28,9 @@ export function Scanner({ onScan, active }: ScannerProps) {
                 scannerRef.current.clear().catch(console.error);
             }
         };
-    }, []);
+    }, [active]);
 
-    const checkCameraPermission = async () => {
+    const requestCameraPermission = async (): Promise<boolean> => {
         try {
             // Try to get camera permission
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
@@ -36,6 +38,7 @@ export function Scanner({ onScan, active }: ScannerProps) {
             stream.getTracks().forEach(track => track.stop());
             setHasPermission(true);
             setPermissionError(null);
+            return true;
         } catch (error: any) {
             if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
                 setHasPermission(false);
@@ -47,17 +50,28 @@ export function Scanner({ onScan, active }: ScannerProps) {
                 setHasPermission(false);
                 setPermissionError('Error accessing camera: ' + error.message);
             }
+            return false;
         }
     };
 
-    const requestPermission = async () => {
-        await checkCameraPermission();
-    };
-
-    const startScanning = () => {
-        if (hasPermission === false) {
-            requestPermission();
-            return;
+    const startScanning = async () => {
+        if (!active) return;
+        
+        // Request camera permission if not already granted
+        if (hasPermission === null || hasPermission === false) {
+            const granted = await requestCameraPermission();
+            if (!granted) {
+                return;
+            }
+        }
+        
+        // Clean up any existing scanner
+        if (scannerRef.current) {
+            try {
+                await scannerRef.current.clear();
+            } catch (e) {
+                console.error('Error clearing scanner:', e);
+            }
         }
         
         setScanning(true);
@@ -110,7 +124,7 @@ export function Scanner({ onScan, active }: ScannerProps) {
                             <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Camera Access Required</p>
                             <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">{permissionError}</p>
                             <Button 
-                                onClick={requestPermission} 
+                                onClick={requestCameraPermission} 
                                 size="sm" 
                                 variant="outline" 
                                 className="mt-2 h-7 text-xs"
