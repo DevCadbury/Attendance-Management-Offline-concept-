@@ -35,10 +35,11 @@ export async function startSessionAction(
         );
         
         if (existingSlotSession) {
+            // Session already exists, return it so UI can navigate to it
             return { 
-                success: false, 
-                error: 'Attendance session already exists for this slot today',
-                sessionId: existingSlotSession.id 
+                success: true, 
+                session: existingSlotSession,
+                alreadyExists: true
             };
         }
     }
@@ -231,5 +232,35 @@ export async function getAllAttendanceAction() {
 }
 
 export async function getAllSessionsAction() {
-    return await getSessions();
+    const sessions = await getSessions();
+    
+    // Auto-lock sessions based on 24-hour rule or lockUntil expiry
+    const now = Date.now();
+    let updated = false;
+    
+    for (const session of sessions) {
+        if (!session.locked) {
+            // Check if 24 hours have passed since start time
+            const hoursSinceStart = (now - session.startTime) / (1000 * 60 * 60);
+            
+            // Auto-lock if:
+            // 1. 24 hours have passed since session start, OR
+            // 2. lockUntil time has passed (if dispute was raised)
+            const shouldLock = hoursSinceStart >= 24 || (session.lockUntil && now > session.lockUntil);
+            
+            if (shouldLock && !session.unlockedByAdmin) {
+                session.locked = true;
+                session.lockUntil = undefined; // Clear lockUntil after locking
+                await saveSession(session);
+                updated = true;
+            }
+        }
+    }
+    
+    if (updated) {
+        revalidatePath('/teacher');
+        revalidatePath('/admin');
+    }
+    
+    return sessions;
 }

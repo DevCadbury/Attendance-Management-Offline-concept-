@@ -7,11 +7,13 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { QRCodeDisplay } from '@/components/dashboard/qr-code';
 import { toast } from 'sonner';
-import { Users, Clock, CheckCircle, RefreshCw } from 'lucide-react';
+import { Users, Clock, CheckCircle, RefreshCw, ExternalLink } from 'lucide-react';
 import { startSessionAction, endSessionAction, getAttendanceAction, rotateQRCodeAction } from '@/app/actions/attendance';
 import { Session, Attendance } from '@/lib/db';
+import { useRouter } from 'next/navigation';
 
 export function TeacherView({ teacherId }: { teacherId: string }) {
+    const router = useRouter();
     const [subject, setSubject] = useState('');
     const [session, setSession] = useState<Session | null>(null);
     const [attendance, setAttendance] = useState<Attendance[]>([]);
@@ -126,9 +128,18 @@ export function TeacherView({ teacherId }: { teacherId: string }) {
                                     <QRCodeDisplay value={session.qrCode} size={200} />
                                 </div>
 
-                                <Button variant="destructive" className="w-full" onClick={handleEndSession} disabled={loading}>
-                                    End Session
-                                </Button>
+                                <div className="space-y-2">
+                                    <Button 
+                                        className="w-full" 
+                                        onClick={() => router.push(`/teacher/session/${session.id}`)}
+                                    >
+                                        <ExternalLink className="h-4 w-4 mr-2" />
+                                        Open Full Attendance Manager
+                                    </Button>
+                                    <Button variant="destructive" className="w-full" onClick={handleEndSession} disabled={loading}>
+                                        End Session
+                                    </Button>
+                                </div>
                             </div>
                         )}
                     </CardContent>

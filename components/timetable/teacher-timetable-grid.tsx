@@ -134,7 +134,7 @@ export function TeacherTimetableGrid({ timetableData, teacherId, title = "My Tea
             // Navigate to edit attendance
             const session = await getSessionBySlotAction(slot.id!, teacherId, dateStr);
             if (session) {
-                router.push(`/teacher?session=${session.id}`);
+                router.push(`/teacher/session/${session.id}`);
             }
         } else {
             // Start new session
@@ -155,8 +155,14 @@ export function TeacherTimetableGrid({ timetableData, teacherId, title = "My Tea
                 if (result.success === false) {
                     toast.error(result.error || 'Failed to start session');
                 } else {
-                    toast.success('Attendance session started');
-                    router.push('/teacher');
+                    if (result.alreadyExists) {
+                        toast.info('Opening existing attendance session');
+                    } else {
+                        toast.success('Attendance session started');
+                    }
+                    if (result.session) {
+                        router.push(`/teacher/session/${result.session.id}`);
+                    }
                 }
             } catch (error) {
                 toast.error('Failed to start attendance session');

@@ -107,12 +107,32 @@ export async function deleteSession(id: string): Promise<void> {
 // ============= ATTENDANCE =============
 export async function getAttendance(): Promise<Attendance[]> {
     await connectDB();
-    return await AttendanceModel.find({}).lean();
+    const records = await AttendanceModel.find({}).lean();
+    return records.map(record => ({
+        id: record.id,
+        sessionId: record.sessionId,
+        studentId: record.studentId,
+        studentName: record.studentName,
+        timestamp: record.timestamp,
+        status: record.status,
+        photo: record.photo,
+        markedBy: record.markedBy
+    }));
 }
 
 export async function getAttendanceBySession(sessionId: string): Promise<Attendance[]> {
     await connectDB();
-    return await AttendanceModel.find({ sessionId }).lean();
+    const records = await AttendanceModel.find({ sessionId }).lean();
+    return records.map(record => ({
+        id: record.id,
+        sessionId: record.sessionId,
+        studentId: record.studentId,
+        studentName: record.studentName,
+        timestamp: record.timestamp,
+        status: record.status,
+        photo: record.photo,
+        markedBy: record.markedBy
+    }));
 }
 
 export async function saveAttendance(attendance: Attendance): Promise<void> {
@@ -226,22 +246,67 @@ export async function deleteTimeSlot(id: string): Promise<void> {
 // ============= DISPUTES =============
 export async function getDisputes(): Promise<Dispute[]> {
     await connectDB();
-    return await DisputeModel.find({}).lean();
+    const disputes = await DisputeModel.find({}).lean();
+    return disputes.map(dispute => ({
+        id: dispute.id,
+        sessionId: dispute.sessionId,
+        studentId: dispute.studentId,
+        studentName: dispute.studentName,
+        reason: dispute.reason,
+        status: dispute.status,
+        createdAt: dispute.createdAt,
+        resolvedAt: dispute.resolvedAt,
+        resolvedBy: dispute.resolvedBy
+    }));
 }
 
 export async function getDisputeById(id: string): Promise<Dispute | null> {
     await connectDB();
-    return await DisputeModel.findOne({ id }).lean();
+    const dispute = await DisputeModel.findOne({ id }).lean();
+    if (!dispute) return null;
+    return {
+        id: dispute.id,
+        sessionId: dispute.sessionId,
+        studentId: dispute.studentId,
+        studentName: dispute.studentName,
+        reason: dispute.reason,
+        status: dispute.status,
+        createdAt: dispute.createdAt,
+        resolvedAt: dispute.resolvedAt,
+        resolvedBy: dispute.resolvedBy
+    };
 }
 
 export async function getStudentDisputes(studentId: string): Promise<Dispute[]> {
     await connectDB();
-    return await DisputeModel.find({ studentId }).lean();
+    const disputes = await DisputeModel.find({ studentId }).lean();
+    return disputes.map(dispute => ({
+        id: dispute.id,
+        sessionId: dispute.sessionId,
+        studentId: dispute.studentId,
+        studentName: dispute.studentName,
+        reason: dispute.reason,
+        status: dispute.status,
+        createdAt: dispute.createdAt,
+        resolvedAt: dispute.resolvedAt,
+        resolvedBy: dispute.resolvedBy
+    }));
 }
 
 export async function getPendingDisputes(): Promise<Dispute[]> {
     await connectDB();
-    return await DisputeModel.find({ status: 'pending' }).lean();
+    const disputes = await DisputeModel.find({ status: 'pending' }).lean();
+    return disputes.map(dispute => ({
+        id: dispute.id,
+        sessionId: dispute.sessionId,
+        studentId: dispute.studentId,
+        studentName: dispute.studentName,
+        reason: dispute.reason,
+        status: dispute.status,
+        createdAt: dispute.createdAt,
+        resolvedAt: dispute.resolvedAt,
+        resolvedBy: dispute.resolvedBy
+    }));
 }
 
 export async function saveDispute(dispute: Dispute): Promise<void> {

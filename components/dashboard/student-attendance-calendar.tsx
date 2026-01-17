@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, Fragment } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -43,6 +43,7 @@ interface Dispute {
     reason: string;
     status: 'pending' | 'approved' | 'rejected';
     createdAt: number;
+    rejectionMessage?: string;
 }
 
 export function StudentAttendanceCalendar({ 
@@ -257,8 +258,8 @@ export function StudentAttendanceCalendar({
                                 })}
 
                                 {timeSlots.map((slot) => (
-                                    <>
-                                        <div key={`slot-${slot.id}`} className="p-2 border-r">
+                                    <Fragment key={`slot-row-${slot.id}`}>
+                                        <div className="p-2 border-r">
                                             <div className="font-medium text-sm">{slot.subject}</div>
                                             <div className="text-xs text-muted-foreground">
                                                 {slot.startTime} - {slot.endTime}
@@ -329,13 +330,20 @@ export function StudentAttendanceCalendar({
                                                             {attendanceRecord.status === 'absent' && (
                                                                 <div className="mt-auto">
                                                                     {dispute ? (
-                                                                        <div className={`text-xs px-2 py-1 rounded ${
-                                                                            dispute.status === 'pending' ? 'bg-yellow-500/20 text-yellow-700' :
-                                                                            dispute.status === 'approved' ? 'bg-green-500/20 text-green-700' :
-                                                                            'bg-red-500/20 text-red-700'
-                                                                        }`}>
-                                                                            <AlertCircle className="h-3 w-3 inline mr-1" />
-                                                                            Dispute {dispute.status}
+                                                                        <div className="space-y-1">
+                                                                            <div className={`text-xs px-2 py-1 rounded ${
+                                                                                dispute.status === 'pending' ? 'bg-yellow-500/20 text-yellow-700' :
+                                                                                dispute.status === 'approved' ? 'bg-green-500/20 text-green-700' :
+                                                                                'bg-red-500/20 text-red-700'
+                                                                            }`}>
+                                                                                <AlertCircle className="h-3 w-3 inline mr-1" />
+                                                                                Dispute {dispute.status}
+                                                                            </div>
+                                                                            {dispute.status === 'rejected' && dispute.rejectionMessage && (
+                                                                                <div className="text-xs text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded">
+                                                                                    <strong>Rejection reason:</strong> {dispute.rejectionMessage}
+                                                                                </div>
+                                                                            )}
                                                                         </div>
                                                                     ) : (
                                                                         <Button
@@ -370,7 +378,7 @@ export function StudentAttendanceCalendar({
                                                 </div>
                                             );
                                         })}
-                                    </>
+                                    </Fragment>
                                 ))}
                             </div>
                         </div>
@@ -393,26 +401,33 @@ export function StudentAttendanceCalendar({
                             {disputes.map((dispute) => (
                                 <div 
                                     key={dispute.id}
-                                    className="p-3 border rounded-lg flex items-start justify-between"
+                                    className="p-3 border rounded-lg"
                                 >
-                                    <div className="flex-1">
-                                        <div className="font-medium text-sm mb-1">
-                                            Dispute #{dispute.id.substring(0, 8)}
+                                    <div className="flex items-start justify-between mb-2">
+                                        <div className="flex-1">
+                                            <div className="font-medium text-sm mb-1">
+                                                Dispute #{dispute.id.substring(0, 8)}
+                                            </div>
+                                            <div className="text-sm text-muted-foreground mb-2">
+                                                {dispute.reason}
+                                            </div>
+                                            <div className="text-xs text-muted-foreground">
+                                                Raised on {new Date(dispute.createdAt).toLocaleDateString()}
+                                            </div>
                                         </div>
-                                        <div className="text-sm text-muted-foreground mb-2">
-                                            {dispute.reason}
-                                        </div>
-                                        <div className="text-xs text-muted-foreground">
-                                            Raised on {new Date(dispute.createdAt).toLocaleDateString()}
+                                        <div className={`px-3 py-1 rounded-full text-xs font-medium ${
+                                            dispute.status === 'pending' ? 'bg-yellow-500/20 text-yellow-700' :
+                                            dispute.status === 'approved' ? 'bg-green-500/20 text-green-700' :
+                                            'bg-red-500/20 text-red-700'
+                                        }`}>
+                                            {dispute.status.charAt(0).toUpperCase() + dispute.status.slice(1)}
                                         </div>
                                     </div>
-                                    <div className={`px-3 py-1 rounded-full text-xs font-medium ${
-                                        dispute.status === 'pending' ? 'bg-yellow-500/20 text-yellow-700' :
-                                        dispute.status === 'approved' ? 'bg-green-500/20 text-green-700' :
-                                        'bg-red-500/20 text-red-700'
-                                    }`}>
-                                        {dispute.status.charAt(0).toUpperCase() + dispute.status.slice(1)}
-                                    </div>
+                                    {dispute.status === 'rejected' && dispute.rejectionMessage && (
+                                        <div className="mt-2 text-xs text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20 p-2 rounded border border-red-200 dark:border-red-800">
+                                            <strong>Rejection reason:</strong> {dispute.rejectionMessage}
+                                        </div>
+                                    )}
                                 </div>
                             ))}
                         </div>

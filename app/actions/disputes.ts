@@ -36,16 +36,19 @@ export async function raiseDisputeAction(sessionId: string, studentId: string, s
 
         await saveDispute(newDispute);
         
-        // Keep the session unlocked for 2 days (grace period)
+        // Keep the session unlocked for 2 days (grace period) from now
         const sessions = await getSessions();
         const session = sessions.find(s => s.id === sessionId);
         if (session) {
             session.unlockedByAdmin = true;
+            // Extend lock to 2 days from now
+            session.lockUntil = Date.now() + (2 * 24 * 60 * 60 * 1000);
             await saveSession(session);
         }
 
         revalidatePath('/student');
         revalidatePath('/admin');
+        revalidatePath('/teacher');
         return { success: true, message: 'Dispute raised successfully. Your attendance is unlocked for 2 days.' };
     } catch (error) {
         return { success: false, error: 'Failed to raise dispute' };
@@ -166,6 +169,55 @@ export async function getStudentDisputesAction(studentId: string) {
 // Get pending disputes for admin
 export async function getPendingDisputesAction() {
     return await getPendingDisputes();
+}
+
+// Teacher approves dispute (auto-approve when marked present)
+export async function teacherApproveDisputeAction(disputeId: string, teacherId: string) {
+    try {
+        const disputes = await getDisputes();
+        const dispute = disputes.find(d => d.id === disputeId);
+        
+        if (!dispute) {
+            return { success: false, error: 'Dispute not found' };
+        }
+
+        dispute.status = 'approved';
+        dispute.resolvedAt = Date.now();
+        dispute.resolvedBy = teacherId;
+
+        await saveDispute(dispute);
+
+        revalidatePath('/student');
+        revalidatePath('/teacher');
+        return { success: true, message: 'Dispute approved.' };
+    } catch (error) {
+        return { success: false, error: 'Failed to approve dispute' };
+    }
+}
+
+// Teacher rejects dispute with message
+export async function teacherRejectDisputeAction(disputeId: string, teacherId: string, message: string) {
+    try {
+        const disputes = await getDisputes();
+        const dispute = disputes.find(d => d.id === disputeId);
+        
+        if (!dispute) {
+            return { success: false, error: 'Dispute not found' };
+        }
+
+        dispute.status = 'rejected';
+        dispute.resolvedAt = Date.now();
+        dispute.resolvedBy = teacherId;
+        dispute.rejectionMessage = message;
+
+        await saveDispute(dispute);
+
+        revalidatePath('/student');
+        revalidatePath('/teacher');
+        return { success: true, message: 'Dispute rejected.' };
+    } catch (error) {
+        return { success: false, error: 'Failed to reject dispute' };
+    }
 }
 
 // Check and clean up expired disputes (after 2 days grace period)

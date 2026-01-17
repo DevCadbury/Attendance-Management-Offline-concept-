@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Html5QrcodeScanner } from 'html5-qrcode';
 import { Button } from '@/components/ui/button';
-import { Camera, Scan } from 'lucide-react';
+import { Camera, Scan, SwitchCamera, AlertCircle } from 'lucide-react';
 
 interface ScannerProps {
     onScan: (data: string, photo?: string) => void;
@@ -16,12 +16,18 @@ export function ScannerWithPhoto({ onScan, active, requirePhoto = true }: Scanne
     const [photoCapture, setPhotoCapture] = useState(false);
     const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
     const [scannedQR, setScannedQR] = useState<string | null>(null);
+    const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+    const [permissionError, setPermissionError] = useState<string | null>(null);
+    const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user'); // user = front, environment = back
     const scannerRef = useRef<Html5QrcodeScanner | null>(null);
     const videoRef = useRef<HTMLVideoElement | null>(null);
     const canvasRef = useRef<HTMLCanvasElement | null>(null);
     const streamRef = useRef<MediaStream | null>(null);
 
     useEffect(() => {
+        // Check camera permission on mount
+        checkCameraPermission();
+        
         return () => {
             if (scannerRef.current) {
                 scannerRef.current.clear().catch(console.error);
@@ -32,10 +38,54 @@ export function ScannerWithPhoto({ onScan, active, requirePhoto = true }: Scanne
         };
     }, []);
 
-    const startPhotoCapture = async () => {
+    const checkCameraPermission = async () => {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            stream.getTracks().forEach(track => track.stop());
+            setHasPermission(true);
+            setPermissionError(null);
+        } catch (error: any) {
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                setHasPermission(false);
+                setPermissionError('Camera permission denied. Please allow camera access in your browser settings.');
+            } else if (error.name === 'NotFoundError') {
+                setHasPermission(false);
+                setPermissionError('No camera found on this device.');
+            } else {
+                setHasPermission(false);
+                setPermissionError('Error accessing camera: ' + error.message);
+            }
+        }
+    };
+
+    const requestPermission = async () => {
+        await checkCameraPermission();
+    };
+
+    const switchCamera = () => {
+        setFacingMode(prev => prev === 'user' ? 'environment' : 'user');
+        if (photoCapture) {
+            // Restart photo capture with new camera
+            if (streamRef.current) {
+                streamRef.current.getTracks().forEach(track => track.stop());
+            }
+            startPhotoCapture(facingMode === 'user' ? 'environment' : 'user');
+        }
+    };
+
+    const startPhotoCapture = async (cameraFacing?: 'user' | 'environment') => {
+        if (hasPermission === false) {
+            await requestPermission();
+            if (hasPermission === false) return;
+        }
+        
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: 'user', width: 640, height: 480 } 
+                video: { 
+                    facingMode: cameraFacing || facingMode, // Use front camera (user) by default for photos
+                    width: { ideal: 1280 },
+                    height: { ideal: 720 }
+                } 
             });
             streamRef.current = stream;
             if (videoRef.current) {
@@ -43,9 +93,14 @@ export function ScannerWithPhoto({ onScan, active, requirePhoto = true }: Scanne
                 videoRef.current.play();
             }
             setPhotoCapture(true);
-        } catch (error) {
+        } catch (error: any) {
             console.error('Error accessing camera:', error);
-            alert('Could not access camera. Please check permissions.');
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                setHasPermission(false);
+                setPermissionError('Camera permission denied. Please allow camera access.');
+            } else {
+                alert('Could not access camera: ' + error.message);
+            }
         }
     };
 
@@ -77,12 +132,24 @@ export function ScannerWithPhoto({ onScan, active, requirePhoto = true }: Scanne
         startPhotoCapture();
     };
 
-    const startScanning = () => {
+    const startScanning = async () => {
+        if (hasPermission === false) {
+            await requestPermission();
+            if (hasPermission === false) return;
+        }
+        
         setScanning(true);
         setTimeout(() => {
             const scanner = new Html5QrcodeScanner(
                 "qr-reader",
-                { fps: 10, qrbox: { width: 250, height: 250 } },
+                { 
+                    fps: 10, 
+                    qrbox: { width: 250, height: 250 },
+                    // Use back camera (environment) for QR scanning
+                    videoConstraints: {
+                        facingMode: { ideal: "environment" }
+                    }
+                },
                 false
             );
             scannerRef.current = scanner;
@@ -127,11 +194,41 @@ export function ScannerWithPhoto({ onScan, active, requirePhoto = true }: Scanne
 
     return (
         <div className="flex flex-col items-center justify-center space-y-4 w-full max-w-md mx-auto">
+            {/* Permission Warning */}
+            {hasPermission === false && permissionError && (
+                <div className="w-full p-4 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                    <div className="flex items-start gap-2">
+                        <AlertCircle className="h-5 w-5 text-yellow-600 dark:text-yellow-400 mt-0.5" />
+                        <div className="flex-1">
+                            <p className="text-sm font-medium text-yellow-800 dark:text-yellow-200">Camera Access Required</p>
+                            <p className="text-xs text-yellow-700 dark:text-yellow-300 mt-1">{permissionError}</p>
+                            <Button 
+                                onClick={requestPermission} 
+                                size="sm" 
+                                variant="outline" 
+                                className="mt-2 h-7 text-xs"
+                            >
+                                <Camera className="h-3 w-3 mr-1" />
+                                Request Permission
+                            </Button>
+                        </div>
+                    </div>
+                </div>
+            )}
+            
             {/* Photo Capture UI */}
             {photoCapture && (
                 <div className="w-full">
                     <div className="relative w-full aspect-video bg-black rounded-lg overflow-hidden border-2 border-blue-500">
                         <video ref={videoRef} className="w-full h-full object-cover" />
+                        <Button 
+                            onClick={switchCamera} 
+                            size="sm" 
+                            variant="secondary"
+                            className="absolute top-2 right-2 h-8 w-8 p-0"
+                        >
+                            <SwitchCamera className="h-4 w-4" />
+                        </Button>
                     </div>
                     <Button onClick={capturePhoto} className="w-full mt-4">
                         <Camera className="mr-2 h-4 w-4" /> Capture Photo

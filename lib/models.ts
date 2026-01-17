@@ -36,6 +36,7 @@ export interface ISession {
     slotId?: string;
     locked?: boolean;
     unlockedByAdmin?: boolean;
+    lockUntil?: number;
 }
 
 const sessionSchema = new Schema<ISession>({
@@ -49,7 +50,8 @@ const sessionSchema = new Schema<ISession>({
     sectionId: { type: String },
     slotId: { type: String },
     locked: { type: Boolean, default: false },
-    unlockedByAdmin: { type: Boolean, default: false }
+    unlockedByAdmin: { type: Boolean, default: false },
+    lockUntil: { type: Number }
 });
 
 // Attendance Schema
@@ -127,6 +129,7 @@ export interface IDispute {
     createdAt: number;
     resolvedAt?: number;
     resolvedBy?: string;
+    rejectionMessage?: string;
 }
 
 const disputeSchema = new Schema<IDispute>({
@@ -138,7 +141,8 @@ const disputeSchema = new Schema<IDispute>({
     status: { type: String, enum: ['pending', 'approved', 'rejected'], required: true },
     createdAt: { type: Number, required: true },
     resolvedAt: { type: Number },
-    resolvedBy: { type: String }
+    resolvedBy: { type: String },
+    rejectionMessage: { type: String }
 });
 
 disputeSchema.index({ sessionId: 1 });
