@@ -127,9 +127,9 @@ export function ScannerWithPhoto({ onScan, active, requirePhoto = true }: Scanne
         }
     };
 
-    const retakePhoto = () => {
+    const retakePhoto = async () => {
         setCapturedPhoto(null);
-        startPhotoCapture();
+        await startPhotoCapture();
     };
 
     const startScanning = async () => {
@@ -270,7 +270,7 @@ export function ScannerWithPhoto({ onScan, active, requirePhoto = true }: Scanne
                                 </p>
                                 <div className="space-y-2">
                                     {requirePhoto && !capturedPhoto && (
-                                        <Button onClick={startPhotoCapture} disabled={!active} className="w-full">
+                                        <Button onClick={() => startPhotoCapture()} disabled={!active} className="w-full">
                                             {active ? "📷 Take Photo First" : "No Active Session"}
                                         </Button>
                                     )}
@@ -290,7 +290,7 @@ export function ScannerWithPhoto({ onScan, active, requirePhoto = true }: Scanne
                                 </div>
                                 <p className="text-sm font-medium">QR Code Scanned!</p>
                                 {requirePhoto && !capturedPhoto && (
-                                    <Button onClick={startPhotoCapture} className="w-full">
+                                    <Button onClick={() => startPhotoCapture()} className="w-full">
                                         📷 Take Your Photo
                                     </Button>
                                 )}
