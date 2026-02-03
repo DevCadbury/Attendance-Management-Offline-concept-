@@ -1,9 +1,17 @@
+import { redirect } from 'next/navigation';
+import { getSession } from '@/lib/auth';
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, ArrowRight, ShieldCheck, Users, QrCode, Camera, Clock, TrendingUp, CheckCircle, Zap, Lock, MoreHorizontal, LayoutDashboard, Fingerprint, BarChart3, Smartphone } from "lucide-react";
 import Image from "next/image";
 
-export default function Home() {
+export default async function Home() {
+  // Check if user is logged in and redirect to their dashboard
+  const session = await getSession();
+  if (session) {
+    redirect(`/${session.role}`);
+  }
+
   return (
     <div className="flex min-h-screen flex-col bg-background text-foreground selection:bg-zinc-100 selection:text-zinc-900 dark:selection:bg-zinc-800 dark:selection:text-zinc-100">
       {/* Navbar - Sticky & Clean */}

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 
 interface DashboardLayoutClientProps {
     children: React.ReactNode;
-    session: { id: string; role: string; name: string };
+    session: { id: string; role: string; name: string; profilePictureUrl?: string };
 }
 
 export function DashboardLayoutClient({ children, session }: DashboardLayoutClientProps) {
@@ -21,6 +21,7 @@ export function DashboardLayoutClient({ children, session }: DashboardLayoutClie
                 userName={session.name} 
                 userRole={session.role}
                 userId={session.id}
+                profilePictureUrl={session.profilePictureUrl}
             />
 
             <div className="flex flex-1 overflow-hidden">

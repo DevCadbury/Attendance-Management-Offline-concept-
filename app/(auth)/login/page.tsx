@@ -10,6 +10,7 @@ import { Lock, User } from 'lucide-react';
 import { toast } from 'sonner';
 
 const initialState = {
+    success: false,
     error: '',
 };
 
@@ -19,6 +20,10 @@ export default function LoginPage() {
     useEffect(() => {
         if (state?.error) {
             toast.error(state.error);
+        } else if (state?.success) {
+            toast.success('Login successful!');
+            // Use window.location for full page reload to ensure session is refreshed
+            window.location.href = '/';
         }
     }, [state]);
 
@@ -34,13 +39,14 @@ export default function LoginPage() {
                 <form action={formAction}>
                     <CardContent className="space-y-4">
                         <div className="space-y-2">
-                            <Label htmlFor="username">Username</Label>
+                            <Label htmlFor="email">Email</Label>
                             <div className="relative">
                                 <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                 <Input
-                                    id="username"
-                                    name="username"
-                                    placeholder="admin"
+                                    id="email"
+                                    name="email"
+                                    type="email"
+                                    placeholder="admin@example.com"
                                     className="pl-9"
                                     required
                                 />

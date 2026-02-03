@@ -1,146 +1,349 @@
 'use server';
 
-import { getUsers, User, saveUsers, deleteUser, updateUser, getUserById } from '@/lib/storage';
-import fs from 'fs/promises';
-import path from 'path';
 import bcrypt from 'bcryptjs';
-import { revalidatePath } from 'next/cache';
+import connectDB from '@/lib/mongodb';
+import { UserModel } from '@/lib/models';
+import { getSession } from '@/lib/auth';
+import { compressAndUploadImage } from '@/lib/cloudinary';
 
-const DATA_DIR = path.join(process.cwd(), 'data');
-const USERS_FILE = path.join(DATA_DIR, 'users.json');
-
-export async function createUserAction(prevState: any, formData: FormData) {
-    const username = formData.get('username') as string;
-    const password = formData.get('password') as string;
-    const role = formData.get('role') as User['role'];
-    const name = formData.get('name') as string;
-    const email = formData.get('email') as string || `${username}@example.com`;
-
-    if (!username || !password || !role || !name) {
-        return { error: 'All fields are required', success: false, message: '' };
-    }
-
-    const users = await getUsers();
-    if (users.find(u => u.username === username)) {
-        return { error: 'Username already exists', success: false, message: '' };
-    }
-
-    const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser: User = {
-        id: Math.random().toString(36).substring(7),
-        username,
-        password: hashedPassword,
-        role,
-        name,
-        email,
-        locked: false,
-        createdAt: Date.now(),
-        updatedAt: Date.now(),
-    };
-
-    users.push(newUser);
-    await saveUsers(users);
-
-    revalidatePath('/admin/users');
-    return { success: true, message: 'User created successfully', error: '' };
+// Get IST timestamp
+function getISTTimestamp(): number {
+    return Date.now() + (5.5 * 60 * 60 * 1000);
 }
 
-export async function getUsersAction() {
-    return await getUsers();
-}
-
-export async function deleteUserAction(userId: string) {
+// Create admin (dev only)
+export async function createAdminAction(
+    name: string, 
+    email: string, 
+    password: string,
+    profilePicture?: string // Base64 or URL
+) {
     try {
-        // Prevent deleting the last admin
-        const users = await getUsers();
-        const user = users.find(u => u.id === userId);
+        const session = await getSession();
+        if (!session || session.role !== 'dev') {
+            return { success: false, error: 'Unauthorized. Only dev can create admins.' };
+        }
+
+        await connectDB();
         
-        if (user?.role === 'admin') {
-            const adminCount = users.filter(u => u.role === 'admin').length;
-            if (adminCount <= 1) {
-                return { success: false, error: 'Cannot delete the last admin user' };
-            }
+        // Check if user already exists
+        const existingUser = await UserModel.findOne({ email });
+        if (existingUser) {
+            return { success: false, error: 'User with this email already exists' };
         }
-
-        const result = await deleteUser(userId);
-        if (result) {
-            revalidatePath('/admin/users');
-            return { success: true, message: 'User deleted successfully' };
-        }
-        return { success: false, error: 'User not found' };
-    } catch (error) {
-        return { success: false, error: 'Failed to delete user' };
-    }
-}
-
-export async function updateUserAction(userId: string, updates: { name?: string; role?: User['role']; username?: string }) {
-    try {
-        // Check if username is being changed and already exists
-        if (updates.username) {
-            const users = await getUsers();
-            const existing = users.find(u => u.username === updates.username && u.id !== userId);
-            if (existing) {
-                return { success: false, error: 'Username already exists' };
-            }
-        }
-
-        const result = await updateUser(userId, updates);
-        if (result) {
-            revalidatePath('/admin/users');
-            return { success: true, message: 'User updated successfully' };
-        }
-        return { success: false, error: 'User not found' };
-    } catch (error) {
-        return { success: false, error: 'Failed to update user' };
-    }
-}
-
-export async function resetPasswordAction(userId: string, newPassword: string) {
-    try {
-        if (!newPassword || newPassword.length < 4) {
-            return { success: false, error: 'Password must be at least 4 characters' };
-        }
-
-        const hashedPassword = await bcrypt.hash(newPassword, 10);
-        const result = await updateUser(userId, { password: hashedPassword });
         
-        if (result) {
-            revalidatePath('/admin/users');
-            return { success: true, message: 'Password reset successfully' };
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        // Upload profile picture if provided
+        let profilePictureUrl;
+        if (profilePicture && profilePicture.startsWith('data:image')) {
+            profilePictureUrl = await compressAndUploadImage(profilePicture);
+        } else if (profilePicture) {
+            profilePictureUrl = profilePicture; // Already a URL
         }
-        return { success: false, error: 'User not found' };
+        
+        const userId = `admin_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        await UserModel.create({
+            id: userId,
+            name,
+            email,
+            password: hashedPassword,
+            role: 'admin',
+            profilePictureUrl: profilePictureUrl || undefined,
+            createdBy: session.id,
+            createdAt: getISTTimestamp()
+        });
+        
+        return { success: true, message: 'Admin created successfully' };
     } catch (error) {
-        return { success: false, error: 'Failed to reset password' };
+        console.error('Error creating admin:', error);
+        return { success: false, error: 'Failed to create admin' };
     }
 }
 
-export async function toggleUserLockAction(userId: string) {
+// Create employee (admin only)
+export async function createEmployeeAction(
+    name: string,
+    email: string,
+    password: string,
+    profilePicture?: string // Base64 or URL
+) {
     try {
-        const user = await getUserById(userId);
+        const session = await getSession();
+        if (!session || session.role !== 'admin') {
+            return { success: false, error: 'Unauthorized. Only admin can create employees.' };
+        }
+
+        await connectDB();
+        
+        // Check if user already exists
+        const existingUser = await UserModel.findOne({ email });
+        if (existingUser) {
+            return { success: false, error: 'User with this email already exists' };
+        }
+        
+        // Hash password
+        const hashedPassword = await bcrypt.hash(password, 10);
+        
+        // Upload profile picture if provided
+        let profilePictureUrl;
+        if (profilePicture && profilePicture.startsWith('data:image')) {
+            profilePictureUrl = await compressAndUploadImage(profilePicture);
+        } else if (profilePicture) {
+            profilePictureUrl = profilePicture; // Already a URL
+        }
+        
+        const userId = `emp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        await UserModel.create({
+            id: userId,
+            name,
+            email,
+            password: hashedPassword,
+            role: 'employee',
+            profilePictureUrl: profilePictureUrl || undefined,
+            createdBy: session.id,
+            createdAt: getISTTimestamp()
+        });
+        
+        return { success: true, message: 'Employee created successfully' };
+    } catch (error) {
+        console.error('Error creating employee:', error);
+        return { success: false, error: 'Failed to create employee' };
+    }
+}
+
+// Get all employees (admin only)
+export async function getAllEmployeesAction() {
+    try {
+        const session = await getSession();
+        if (!session || session.role !== 'admin') {
+            return { success: false, error: 'Unauthorized' };
+        }
+
+        await connectDB();
+        
+        const employees = await UserModel.find({ role: 'employee' })
+            .select('-password')
+            .sort({ createdAt: -1 })
+            .lean();
+        
+        // Remove MongoDB-specific fields to prevent serialization errors
+        const serializedEmployees = employees.map(emp => {
+            const { _id, __v, ...rest } = emp as any;
+            return rest;
+        });
+        
+        return { success: true, employees: serializedEmployees };
+    } catch (error) {
+        console.error('Error fetching employees:', error);
+        return { success: false, error: 'Failed to fetch employees' };
+    }
+}
+
+// Update user profile picture (admin only)
+export async function updateProfilePictureAction(userId: string, profilePicture: string) {
+    try {
+        const session = await getSession();
+        if (!session || session.role !== 'admin') {
+            return { success: false, error: 'Unauthorized' };
+        }
+
+        await connectDB();
+        
+        // Upload new profile picture
+        let profilePictureUrl;
+        if (profilePicture.startsWith('data:image')) {
+            profilePictureUrl = await compressAndUploadImage(profilePicture);
+            if (!profilePictureUrl) {
+                return { success: false, error: 'Failed to upload image' };
+            }
+        } else {
+            profilePictureUrl = profilePicture;
+        }
+        
+        await UserModel.updateOne(
+            { id: userId },
+            { $set: { profilePictureUrl } }
+        );
+        
+        return { success: true, message: 'Profile picture updated successfully' };
+    } catch (error) {
+        console.error('Error updating profile picture:', error);
+        return { success: false, error: 'Failed to update profile picture' };
+    }
+}
+
+// Change own password (employees)
+export async function changeOwnPasswordAction(currentPassword: string, newPassword: string) {
+    try {
+        const session = await getSession();
+        if (!session) {
+            return { success: false, error: 'Unauthorized' };
+        }
+
+        await connectDB();
+        
+        const user = await UserModel.findOne({ id: session.id });
         if (!user) {
             return { success: false, error: 'User not found' };
         }
+        
+        // Verify current password
+        const isValid = await bcrypt.compare(currentPassword, user.password);
+        if (!isValid) {
+            return { success: false, error: 'Current password is incorrect' };
+        }
+        
+        // Hash new password
+        const hashedPassword = await bcrypt.hash(newPassword, 10);
+        
+        user.password = hashedPassword;
+        await user.save();
+        
+        return { success: true, message: 'Password changed successfully' };
+    } catch (error) {
+        console.error('Error changing password:', error);
+        return { success: false, error: 'Failed to change password' };
+    }
+}
 
-        // Prevent locking the last admin
-        if (user.role === 'admin' && !user.locked) {
-            const users = await getUsers();
-            const activeAdmins = users.filter(u => u.role === 'admin' && !u.locked).length;
-            if (activeAdmins <= 1) {
-                return { success: false, error: 'Cannot lock the last active admin' };
+// Update employee details (admin only)
+export async function updateEmployeeAction(
+    userId: string,
+    updates: {
+        name?: string;
+        email?: string;
+        password?: string;
+        profilePicture?: string;
+    }
+) {
+    try {
+        const session = await getSession();
+        if (!session || session.role !== 'admin') {
+            return { success: false, error: 'Unauthorized. Only admin can update employees.' };
+        }
+
+        await connectDB();
+        
+        const employee = await UserModel.findOne({ id: userId, role: 'employee' });
+        if (!employee) {
+            return { success: false, error: 'Employee not found' };
+        }
+        
+        // Check if email is being changed and if it's already in use
+        if (updates.email && updates.email !== employee.email) {
+            const existingUser = await UserModel.findOne({ email: updates.email });
+            if (existingUser) {
+                return { success: false, error: 'Email is already in use' };
             }
         }
-
-        const result = await updateUser(userId, { locked: !user.locked });
-        if (result) {
-            revalidatePath('/admin/users');
-            return { 
-                success: true, 
-                message: `User ${user.locked ? 'unlocked' : 'locked'} successfully`,
-                locked: !user.locked 
-            };
+        
+        // Update fields
+        if (updates.name) employee.name = updates.name;
+        if (updates.email) employee.email = updates.email;
+        
+        // Update password if provided
+        if (updates.password) {
+            employee.password = await bcrypt.hash(updates.password, 10);
         }
-        return { success: false, error: 'Failed to update user' };
+        
+        // Update profile picture if provided
+        if (updates.profilePicture) {
+            let profilePictureUrl;
+            if (updates.profilePicture.startsWith('data:image')) {
+                profilePictureUrl = await compressAndUploadImage(updates.profilePicture);
+            } else {
+                profilePictureUrl = updates.profilePicture;
+            }
+            employee.profilePictureUrl = profilePictureUrl || undefined;
+        }
+        
+        await employee.save();
+        
+        return { success: true, message: 'Employee updated successfully' };
     } catch (error) {
-        return { success: false, error: 'Failed to toggle lock status' };
+        console.error('Error updating employee:', error);
+        return { success: false, error: 'Failed to update employee' };
+    }
+}
+
+// Delete employee (admin only)
+export async function deleteEmployeeAction(userId: string) {
+    try {
+        const session = await getSession();
+        if (!session || session.role !== 'admin') {
+            return { success: false, error: 'Unauthorized. Only admin can delete employees.' };
+        }
+
+        await connectDB();
+        
+        const employee = await UserModel.findOne({ id: userId, role: 'employee' });
+        if (!employee) {
+            return { success: false, error: 'Employee not found' };
+        }
+        
+        await UserModel.deleteOne({ id: userId });
+        
+        return { success: true, message: 'Employee deleted successfully' };
+    } catch (error) {
+        console.error('Error deleting employee:', error);
+        return { success: false, error: 'Failed to delete employee' };
+    }
+}
+
+// Get employee by ID (admin only)
+export async function getEmployeeByIdAction(userId: string) {
+    try {
+        const session = await getSession();
+        if (!session || session.role !== 'admin') {
+            return { success: false, error: 'Unauthorized' };
+        }
+
+        await connectDB();
+        
+        const employee = await UserModel.findOne({ id: userId, role: 'employee' })
+            .select('-password')
+            .lean();
+        
+        if (!employee) {
+            return { success: false, error: 'Employee not found' };
+        }
+        
+        // Remove MongoDB-specific fields to prevent serialization errors
+        const { _id, __v, ...serializedEmployee } = employee as any;
+        
+        return { success: true, employee: serializedEmployee };
+    } catch (error) {
+        console.error('Error fetching employee:', error);
+        return { success: false, error: 'Failed to fetch employee' };
+    }
+}
+
+// Suspend/Unsuspend employee (admin only)
+export async function toggleEmployeeSuspensionAction(userId: string) {
+    try {
+        const session = await getSession();
+        if (!session || session.role !== 'admin') {
+            return { success: false, error: 'Unauthorized. Only admin can suspend employees.' };
+        }
+
+        await connectDB();
+        
+        const employee = await UserModel.findOne({ id: userId, role: 'employee' });
+        if (!employee) {
+            return { success: false, error: 'Employee not found' };
+        }
+        
+        employee.locked = !employee.locked;
+        await employee.save();
+        
+        const action = employee.locked ? 'suspended' : 'activated';
+        return { success: true, message: `Employee ${action} successfully`, locked: employee.locked };
+    } catch (error) {
+        console.error('Error toggling employee suspension:', error);
+        return { success: false, error: 'Failed to toggle suspension' };
     }
 }

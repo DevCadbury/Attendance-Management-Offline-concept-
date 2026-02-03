@@ -1,17 +1,17 @@
 import { redirect } from 'next/navigation';
 import { getSession } from '@/lib/auth';
-import UserManagementView from '@/components/admin/user-management-view';
+import EmployeeView from '@/components/employee/employee-view';
 
-export default async function AdminUsersPage() {
+export default async function EmployeePage() {
     const session = await getSession();
     
     if (!session) {
         redirect('/login');
     }
     
-    if (session.role !== 'admin' && session.role !== 'dev') {
+    if (session.role !== 'employee') {
         redirect(`/${session.role}`);
     }
     
-    return <UserManagementView />;
+    return <EmployeeView user={session} />;
 }

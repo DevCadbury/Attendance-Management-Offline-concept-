@@ -87,18 +87,6 @@ export default function ProfileForm({ user }: ProfileFormProps) {
                             />
                         </div>
 
-                        {user.sectionId && (
-                            <div className="space-y-2">
-                                <Label htmlFor="sectionId" className="text-foreground">Section ID</Label>
-                                <Input
-                                    id="sectionId"
-                                    value={user.sectionId}
-                                    disabled
-                                    className="bg-muted"
-                                />
-                            </div>
-                        )}
-
                         <Button type="submit" disabled={isLoading}>
                             {isLoading ? 'Saving...' : 'Save Changes'}
                         </Button>

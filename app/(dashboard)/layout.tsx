@@ -13,5 +13,5 @@ export default async function DashboardLayout({
         redirect('/login');
     }
 
-    return <DashboardLayoutClient session={{ id: session.id, role: session.role, name: session.name }}>{children}</DashboardLayoutClient>;
+    return <DashboardLayoutClient session={{ id: session.id, role: session.role, name: session.name, profilePictureUrl: session.profilePictureUrl }}>{children}</DashboardLayoutClient>;
 }

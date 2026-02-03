@@ -2,25 +2,24 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
-const SECRET_KEY = new TextEncoder().encode('your-secret-key-change-this-in-prod');
+const SECRET_KEY = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key-change-this-in-prod');
 
 export async function middleware(request: NextRequest) {
     const token = request.cookies.get('session')?.value;
     const { pathname } = request.nextUrl;
 
     // Public routes
-    if (pathname === '/login' || pathname.startsWith('/api/auth')) {
+    if (pathname === '/' || pathname === '/login' || pathname.startsWith('/api/auth')) {
         if (token) {
-            // If already logged in, redirect to dashboard based on role? 
-            // For now, let's just verify and maybe redirect if valid.
-            // But usually we let them access login page to switch accounts or just redirect.
-            // Let's verify first.
             try {
                 const { payload } = await jwtVerify(token, SECRET_KEY);
                 const role = (payload as any).role;
                 return NextResponse.redirect(new URL(`/${role}`, request.url));
             } catch (e) {
-                // Invalid token, proceed to login
+                // Invalid token, clear it and proceed
+                const response = NextResponse.next();
+                response.cookies.delete('session');
+                return response;
             }
         }
         return NextResponse.next();
@@ -35,14 +34,14 @@ export async function middleware(request: NextRequest) {
         const { payload } = await jwtVerify(token, SECRET_KEY);
         const role = (payload as any).role;
 
-        // RBAC Logic
-        if (pathname.startsWith('/admin') && role !== 'admin') {
-            return NextResponse.redirect(new URL(`/${role}`, request.url)); // Redirect to their own dashboard
-        }
-        if (pathname.startsWith('/teacher') && role !== 'teacher') {
+        // RBAC Logic for workplace roles
+        if (pathname.startsWith('/dev') && role !== 'dev') {
             return NextResponse.redirect(new URL(`/${role}`, request.url));
         }
-        if (pathname.startsWith('/student') && role !== 'student') {
+        if (pathname.startsWith('/admin') && role !== 'admin' && role !== 'dev') {
+            return NextResponse.redirect(new URL(`/${role}`, request.url));
+        }
+        if (pathname.startsWith('/employee') && role !== 'employee') {
             return NextResponse.redirect(new URL(`/${role}`, request.url));
         }
 
@@ -56,5 +55,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-    matcher: ['/admin/:path*', '/teacher/:path*', '/student/:path*', '/login'],
+    matcher: ['/', '/dev/:path*', '/admin/:path*', '/employee/:path*', '/login'],
 };

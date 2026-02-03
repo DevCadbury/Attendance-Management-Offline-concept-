@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Bell, User, ChevronDown, Lock, LogOut } from 'lucide-react';
 import { ThemeSelector } from '@/components/dashboard/theme-selector';
-import { ThemeSelectorEnhanced } from '@/components/dashboard/theme-selector-enhanced';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import {
@@ -31,9 +30,10 @@ interface DashboardNavbarProps {
     userName: string;
     userRole: string;
     userId: string;
+    profilePictureUrl?: string;
 }
 
-export function DashboardNavbar({ userName, userRole, userId }: DashboardNavbarProps) {
+export function DashboardNavbar({ userName, userRole, userId, profilePictureUrl }: DashboardNavbarProps) {
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [unreadCount, setUnreadCount] = useState(0);
     const [showNotifications, setShowNotifications] = useState(false);
@@ -107,7 +107,7 @@ export function DashboardNavbar({ userName, userRole, userId }: DashboardNavbarP
 
                 <div className="flex items-center gap-2 sm:gap-4">
                     {/* Theme Selector */}
-                    <ThemeSelectorEnhanced />
+                    <ThemeSelector />
                     
                     {/* Notifications */}
                     <DropdownMenu open={showNotifications} onOpenChange={setShowNotifications}>
@@ -187,16 +187,44 @@ export function DashboardNavbar({ userName, userRole, userId }: DashboardNavbarP
                         <DropdownMenuTrigger asChild>
                             <Button variant="ghost" className="flex items-center gap-2">
                                 <div className="hidden sm:flex items-center gap-2">
-                                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                        <User className="h-4 w-4" />
-                                    </div>
+                                    {profilePictureUrl ? (
+                                        <img 
+                                            src={profilePictureUrl} 
+                                            alt={userName}
+                                            className="h-8 w-8 rounded-full object-cover"
+                                            onError={(e) => {
+                                                e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=128`;
+                                            }}
+                                        />
+                                    ) : (
+                                        <img 
+                                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=128`}
+                                            alt={userName}
+                                            className="h-8 w-8 rounded-full"
+                                        />
+                                    )}
                                     <div className="text-left">
                                         <p className="text-sm font-medium leading-none">{userName}</p>
                                         <p className="text-xs text-muted-foreground capitalize">{userRole}</p>
                                     </div>
                                 </div>
-                                <div className="sm:hidden h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center">
-                                    <User className="h-4 w-4" />
+                                <div className="sm:hidden">
+                                    {profilePictureUrl ? (
+                                        <img 
+                                            src={profilePictureUrl} 
+                                            alt={userName}
+                                            className="h-8 w-8 rounded-full object-cover"
+                                            onError={(e) => {
+                                                e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=128`;
+                                            }}
+                                        />
+                                    ) : (
+                                        <img 
+                                            src={`https://ui-avatars.com/api/?name=${encodeURIComponent(userName)}&background=random&size=128`}
+                                            alt={userName}
+                                            className="h-8 w-8 rounded-full"
+                                        />
+                                    )}
                                 </div>
                                 <ChevronDown className="h-4 w-4 opacity-50" />
                             </Button>

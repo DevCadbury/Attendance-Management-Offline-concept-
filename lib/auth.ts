@@ -55,11 +55,14 @@ export async function getSession() {
     if (!token) return null;
 
     try {
-        const { payload } = await jwtVerify(token, SECRET_KEY, {
-            algorithms: [ALG],
+        // Use the same secret key as loginAction and middleware
+        const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key-change-this-in-prod');
+        const { payload } = await jwtVerify(token, secret, {
+            algorithms: ['HS256'],
         });
-        return payload as any as User;
+        return payload as any;
     } catch (error) {
+        console.error('Session verification error:', error);
         return null;
     }
 }

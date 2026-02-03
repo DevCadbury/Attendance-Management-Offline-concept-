@@ -6,8 +6,9 @@ export interface IUser {
     name: string;
     email: string;
     password: string;
-    role: 'admin' | 'teacher' | 'student';
-    sectionId?: string;
+    role: 'dev' | 'admin' | 'employee';
+    profilePictureUrl?: string;
+    createdBy?: string;
     locked?: boolean;
     createdAt: number;
 }
@@ -17,176 +18,237 @@ const userSchema = new Schema<IUser>({
     name: { type: String, required: true },
     email: { type: String, required: true, unique: true },
     password: { type: String, required: true },
-    role: { type: String, enum: ['admin', 'teacher', 'student'], required: true },
-    sectionId: { type: String },
+    role: { type: String, enum: ['dev', 'admin', 'employee'], required: true },
+    profilePictureUrl: { type: String },
+    createdBy: { type: String },
     locked: { type: Boolean, default: false },
     createdAt: { type: Number, required: true }
 });
 
-// Session Schema
-export interface ISession {
+// OTP Schema (for attendance marking)
+export interface IOTP {
     id: string;
-    teacherId: string;
-    subject?: string;
-    qrCode: string;
-    startTime: number;
-    endTime?: number;
-    active: boolean;
-    sectionId?: string;
-    slotId?: string;
-    locked?: boolean;
-    unlockedByAdmin?: boolean;
-    lockUntil?: number;
+    otp: string;
+    type: 'entry' | 'exit';
+    generatedAt: number;
+    expiryTime: number;
+    isActive: boolean;
+    usedBy?: string;
+    usedAt?: number;
+    employeeId?: string; // If set, OTP is only valid for this employee. If null, universal (admin-generated)
 }
 
-const sessionSchema = new Schema<ISession>({
+const otpSchema = new Schema<IOTP>({
     id: { type: String, required: true, unique: true },
-    teacherId: { type: String, required: true },
-    subject: { type: String },
-    qrCode: { type: String, required: true },
-    startTime: { type: Number, required: true },
-    endTime: { type: Number },
-    active: { type: Boolean, required: true },
-    sectionId: { type: String },
-    slotId: { type: String },
-    locked: { type: Boolean, default: false },
-    unlockedByAdmin: { type: Boolean, default: false },
-    lockUntil: { type: Number }
+    otp: { type: String, required: true },
+    type: { type: String, enum: ['entry', 'exit'], required: true },
+    generatedAt: { type: Number, required: true },
+    expiryTime: { type: Number, required: true },
+    isActive: { type: Boolean, default: true },
+    usedBy: { type: String },
+    usedAt: { type: Number },
+    employeeId: { type: String } // null = universal (admin), set = employee-specific
 });
 
-// Attendance Schema
+// Attendance Schema (Entry/Exit based)
 export interface IAttendance {
     id: string;
-    sessionId: string;
-    studentId: string;
-    studentName: string;
-    timestamp: number;
-    status: 'present' | 'absent';
-    photo?: string;
-    markedBy?: 'student' | 'teacher';
+    employeeId: string;
+    employeeName: string;
+    date: string; // YYYY-MM-DD
+    entryTime?: number;
+    exitTime?: number;
+    entryLocation?: {
+        latitude: number;
+        longitude: number;
+        address?: string;
+    };
+    exitLocation?: {
+        latitude: number;
+        longitude: number;
+        address?: string;
+    };
+    status: 'incomplete' | 'present' | 'absent';
+    markedBy: 'employee' | 'admin';
+    editedBy?: string;
+    editedAt?: number;
 }
 
 const attendanceSchema = new Schema<IAttendance>({
     id: { type: String, required: true, unique: true },
-    sessionId: { type: String, required: true },
-    studentId: { type: String, required: true },
-    studentName: { type: String, required: true },
-    timestamp: { type: Number, required: true },
-    status: { type: String, enum: ['present', 'absent'], required: true },
-    photo: { type: String },
-    markedBy: { type: String, enum: ['student', 'teacher'] }
+    employeeId: { type: String, required: true },
+    employeeName: { type: String, required: true },
+    date: { type: String, required: true },
+    entryTime: { type: Number },
+    exitTime: { type: Number },
+    entryLocation: {
+        latitude: { type: Number },
+        longitude: { type: Number },
+        address: { type: String }
+    },
+    exitLocation: {
+        latitude: { type: Number },
+        longitude: { type: Number },
+        address: { type: String }
+    },
+    status: { type: String, enum: ['incomplete', 'present', 'absent'], default: 'incomplete' },
+    markedBy: { type: String, enum: ['employee', 'admin'], required: true },
+    editedBy: { type: String },
+    editedAt: { type: Number }
 });
 
-attendanceSchema.index({ sessionId: 1, studentId: 1 });
-
-// Section Schema
-export interface ISection {
-    id: string;
-    name: string;
-    studentIds: string[];
-    createdAt: number;
-}
-
-const sectionSchema = new Schema<ISection>({
-    id: { type: String, required: true, unique: true },
-    name: { type: String, required: true },
-    studentIds: { type: [String], default: [] },
-    createdAt: { type: Number, required: true }
-});
-
-// TimeSlot Schema
-export interface ITimeSlot {
-    id: string;
-    day: 'Monday' | 'Tuesday' | 'Wednesday' | 'Thursday' | 'Friday' | 'Saturday' | 'Sunday';
-    startTime: string;
-    endTime: string;
-    subject: string;
-    teacherId: string;
-    sectionId: string;
-}
-
-const timeSlotSchema = new Schema<ITimeSlot>({
-    id: { type: String, required: true, unique: true },
-    day: { type: String, enum: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'], required: true },
-    startTime: { type: String, required: true },
-    endTime: { type: String, required: true },
-    subject: { type: String, required: true },
-    teacherId: { type: String, required: true },
-    sectionId: { type: String, required: true }
-});
-
-timeSlotSchema.index({ sectionId: 1, day: 1 });
-timeSlotSchema.index({ teacherId: 1 });
+attendanceSchema.index({ employeeId: 1, date: 1 });
+attendanceSchema.index({ date: 1 });
 
 // Dispute Schema
 export interface IDispute {
     id: string;
-    sessionId: string;
-    studentId: string;
-    studentName: string;
+    attendanceId?: string;
+    date: string;
+    employeeId: string;
+    employeeName: string;
     reason: string;
     status: 'pending' | 'approved' | 'rejected';
     createdAt: number;
     resolvedAt?: number;
     resolvedBy?: string;
     rejectionMessage?: string;
+    adminNotes?: string;
 }
 
 const disputeSchema = new Schema<IDispute>({
     id: { type: String, required: true, unique: true },
-    sessionId: { type: String, required: true },
-    studentId: { type: String, required: true },
-    studentName: { type: String, required: true },
+    attendanceId: { type: String },
+    date: { type: String, required: true },
+    employeeId: { type: String, required: true },
+    employeeName: { type: String, required: true },
     reason: { type: String, required: true },
     status: { type: String, enum: ['pending', 'approved', 'rejected'], required: true },
     createdAt: { type: Number, required: true },
     resolvedAt: { type: Number },
     resolvedBy: { type: String },
-    rejectionMessage: { type: String }
+    rejectionMessage: { type: String },
+    adminNotes: { type: String }
 });
 
-disputeSchema.index({ sessionId: 1 });
-disputeSchema.index({ studentId: 1 });
+disputeSchema.index({ date: 1 });
+disputeSchema.index({ employeeId: 1 });
 disputeSchema.index({ status: 1 });
 
-// Holiday Schema
-export interface IHoliday {
+// Attendance Log Schema (for tracking admin edits and OTP usage)
+export interface IAttendanceLog {
     id: string;
-    date: string; // YYYY-MM-DD format
-    message: string;
-    createdAt: number;
+    attendanceId?: string;
+    employeeId: string;
+    employeeName: string;
+    date: string;
+    action: 'entry' | 'exit' | 'edited' | 'deleted';
+    timestamp: number;
+    location?: {
+        latitude: number;
+        longitude: number;
+        address?: string;
+    };
+    editedBy?: string;
+    editedByName?: string;
+    reason?: string;
+    otpUsed?: string;
 }
 
-const holidaySchema = new Schema<IHoliday>({
+const attendanceLogSchema = new Schema<IAttendanceLog>({
     id: { type: String, required: true, unique: true },
+    attendanceId: { type: String },
+    employeeId: { type: String, required: true },
+    employeeName: { type: String, required: true },
     date: { type: String, required: true },
-    message: { type: String, required: true },
-    createdAt: { type: Number, required: true }
+    action: { type: String, enum: ['entry', 'exit', 'edited', 'deleted'], required: true },
+    timestamp: { type: Number, required: true },
+    location: {
+        latitude: { type: Number },
+        longitude: { type: Number },
+        address: { type: String }
+    },
+    editedBy: { type: String },
+    editedByName: { type: String },
+    reason: { type: String },
+    otpUsed: { type: String }
 });
 
-holidaySchema.index({ date: 1 });
+attendanceLogSchema.index({ employeeId: 1, date: 1 });
+attendanceLogSchema.index({ editedBy: 1 });
+attendanceLogSchema.index({ timestamp: -1 });
 
-// Settings Schema
+// OTP Activity Log Schema (for tracking OTP requests and validations)
+export interface IOTPActivityLog {
+    id: string;
+    employeeId: string;
+    employeeName: string;
+    employeeEmail: string;
+    profilePictureUrl?: string;
+    action: 'request' | 'validate';
+    type: 'entry' | 'exit';
+    otpCode?: string;
+    timestamp: number;
+    success: boolean;
+    errorMessage?: string;
+    location?: {
+        latitude: number;
+        longitude: number;
+        address?: string;
+    };
+}
+
+const otpActivityLogSchema = new Schema<IOTPActivityLog>({
+    id: { type: String, required: true, unique: true },
+    employeeId: { type: String, required: true },
+    employeeName: { type: String, required: true },
+    employeeEmail: { type: String, required: true },
+    profilePictureUrl: { type: String },
+    action: { type: String, enum: ['request', 'validate'], required: true },
+    type: { type: String, enum: ['entry', 'exit'], required: true },
+    otpCode: { type: String },
+    timestamp: { type: Number, required: true },
+    success: { type: Boolean, required: true },
+    errorMessage: { type: String },
+    location: {
+        latitude: { type: Number },
+        longitude: { type: Number },
+        address: { type: String }
+    }
+});
+
+otpActivityLogSchema.index({ employeeId: 1 });
+otpActivityLogSchema.index({ timestamp: -1 });
+otpActivityLogSchema.index({ action: 1, timestamp: -1 });
+
+// Settings Schema (global settings)
 export interface ISettings {
     id: string;
-    attendanceEnabled: boolean;
-    qrRefreshInterval: number;
-    disputeGracePeriod: number;
+    entryTimeStart: string; // Format: "HH:MM" (e.g., "09:00")
+    entryTimeEnd: string;   // Format: "HH:MM" (e.g., "10:00")
+    exitTimeStart: string;  // Format: "HH:MM" (e.g., "17:00")
+    exitTimeEnd: string;    // Format: "HH:MM" (e.g., "18:00")
+    otpValidityMinutes: number;
+    securityEmail: string;  // Email where OTPs are sent
+    securityNotificationsEnabled: boolean; // Toggle for security guard notifications
 }
 
 const settingsSchema = new Schema<ISettings>({
-    id: { type: String, required: true, unique: true, default: 'global' },
-    attendanceEnabled: { type: Boolean, required: true, default: true },
-    qrRefreshInterval: { type: Number, required: true, default: 3000 },
-    disputeGracePeriod: { type: Number, required: true, default: 172800000 }
+    id: { type: String, required: true, unique: true },
+    entryTimeStart: { type: String, default: "09:00" },
+    entryTimeEnd: { type: String, default: "10:00" },
+    exitTimeStart: { type: String, default: "17:00" },
+    exitTimeEnd: { type: String, default: "18:00" },
+    otpValidityMinutes: { type: Number, default: 5 },
+    securityEmail: { type: String, default: "" },
+    securityNotificationsEnabled: { type: Boolean, default: true }
 });
 
-// Create models
+// Export models
 export const UserModel = (mongoose.models.User as Model<IUser>) || mongoose.model<IUser>('User', userSchema);
-export const SessionModel = (mongoose.models.Session as Model<ISession>) || mongoose.model<ISession>('Session', sessionSchema);
+export const OTPModel = (mongoose.models.OTP as Model<IOTP>) || mongoose.model<IOTP>('OTP', otpSchema);
 export const AttendanceModel = (mongoose.models.Attendance as Model<IAttendance>) || mongoose.model<IAttendance>('Attendance', attendanceSchema);
-export const SectionModel = (mongoose.models.Section as Model<ISection>) || mongoose.model<ISection>('Section', sectionSchema);
-export const TimeSlotModel = (mongoose.models.TimeSlot as Model<ITimeSlot>) || mongoose.model<ITimeSlot>('TimeSlot', timeSlotSchema);
 export const DisputeModel = (mongoose.models.Dispute as Model<IDispute>) || mongoose.model<IDispute>('Dispute', disputeSchema);
-export const HolidayModel = (mongoose.models.Holiday as Model<IHoliday>) || mongoose.model<IHoliday>('Holiday', holidaySchema);
+export const AttendanceLogModel = (mongoose.models.AttendanceLog as Model<IAttendanceLog>) || mongoose.model<IAttendanceLog>('AttendanceLog', attendanceLogSchema);
+export const OTPActivityLogModel = (mongoose.models.OTPActivityLog as Model<IOTPActivityLog>) || mongoose.model<IOTPActivityLog>('OTPActivityLog', otpActivityLogSchema);
 export const SettingsModel = (mongoose.models.Settings as Model<ISettings>) || mongoose.model<ISettings>('Settings', settingsSchema);

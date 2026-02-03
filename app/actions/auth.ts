@@ -1,60 +1,64 @@
 'use server';
 
-import { cookies } from 'next/headers';
-import { SignJWT } from 'jose';
 import bcrypt from 'bcryptjs';
-import { getUser } from '@/lib/storage';
+import { SignJWT } from 'jose';
+import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import connectDB from '@/lib/mongodb';
+import { UserModel } from '@/lib/models';
 
-const SECRET_KEY = new TextEncoder().encode('your-secret-key-change-this-in-prod');
-const ALG = 'HS256';
+const secret = new TextEncoder().encode(process.env.JWT_SECRET || 'your-secret-key-change-this-in-prod');
 
 export async function loginAction(prevState: any, formData: FormData) {
-    const username = formData.get('username') as string;
-    const password = formData.get('password') as string;
+    try {
+        const email = formData.get('email') as string;
+        const password = formData.get('password') as string;
 
-    if (!username || !password) {
-        return { error: 'Username and password are required' };
+        if (!email || !password) {
+            return { success: false, error: 'Email and password are required' };
+        }
+
+        await connectDB();
+
+        const user = await UserModel.findOne({ email }).lean();
+        if (!user) {
+            return { success: false, error: 'Invalid credentials' };
+        }
+
+        const isValid = await bcrypt.compare(password, user.password);
+        if (!isValid) {
+            return { success: false, error: 'Invalid credentials' };
+        }
+
+        if (user.locked) {
+            return { success: false, error: 'Account is locked. Contact administrator.' };
+        }
+
+        // Create JWT token
+        const token = await new SignJWT({ 
+            id: user.id, 
+            email: user.email, 
+            role: user.role,
+            name: user.name,
+            profilePictureUrl: user.profilePictureUrl
+        })
+            .setProtectedHeader({ alg: 'HS256' })
+            .setExpirationTime('7d')
+            .sign(secret);
+
+        // Set cookie
+        (await cookies()).set('session', token, {
+            httpOnly: true,
+            secure: process.env.NODE_ENV === 'production',
+            sameSite: 'lax',
+            maxAge: 60 * 60 * 24 * 7 // 7 days
+        });
+
+        return { success: true };
+    } catch (error) {
+        console.error('Login error:', error);
+        return { success: false, error: 'Login failed. Please try again.' };
     }
-
-    const user = await getUser(username);
-
-    if (!user || !user.password) {
-        return { error: 'Invalid credentials' };
-    }
-
-    // Check if account is locked
-    if (user.locked) {
-        return { error: 'Account is locked. Please contact an administrator.' };
-    }
-
-    const isValid = await bcrypt.compare(password, user.password);
-
-    if (!isValid) {
-        return { error: 'Invalid credentials' };
-    }
-
-    // Create session
-    const token = await new SignJWT({
-        id: user.id,
-        username: user.username,
-        role: user.role,
-        name: user.name
-    })
-        .setProtectedHeader({ alg: ALG })
-        .setIssuedAt()
-        .setExpirationTime('24h')
-        .sign(SECRET_KEY);
-
-    (await cookies()).set('session', token, {
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-        sameSite: 'strict',
-        maxAge: 60 * 60 * 24, // 24 hours
-        path: '/',
-    });
-
-    redirect(`/${user.role}`);
 }
 
 export async function logoutAction() {

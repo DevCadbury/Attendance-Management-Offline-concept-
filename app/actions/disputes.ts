@@ -1,262 +1,151 @@
 'use server';
 
-import {
-    getDisputes,
-    saveDispute,
-    getStudentDisputes,
-    getPendingDisputes,
-    getSessions,
-    saveSession,
-    getSettings,
-    Dispute
-} from '@/lib/db';
-import { notifySessionUnlocked } from '@/lib/notifications';
-import { revalidatePath } from 'next/cache';
+import connectDB from '@/lib/mongodb';
+import { DisputeModel, UserModel } from '@/lib/models';
+import { getSession } from '@/lib/auth';
 
-// Student raises a dispute
-export async function raiseDisputeAction(sessionId: string, studentId: string, studentName: string, reason: string) {
+// Get IST timestamp
+function getISTTimestamp(): number {
+    return Date.now() + (5.5 * 60 * 60 * 1000);
+}
+
+// Raise dispute (employee only)
+export async function raiseDisputeAction(date: string, reason: string, attendanceId?: string) {
     try {
-        // Check if dispute already exists for this session and student
-        const disputes = await getDisputes();
-        const existing = disputes.find(d => d.sessionId === sessionId && d.studentId === studentId);
-        
-        if (existing) {
-            return { success: false, error: 'Dispute already raised for this session' };
+        const session = await getSession();
+        if (!session || session.role !== 'employee') {
+            return { success: false, error: 'Unauthorized' };
         }
 
-        const newDispute: Dispute = {
-            id: Math.random().toString(36).substring(7),
-            sessionId,
-            studentId,
-            studentName,
+        await connectDB();
+        
+        const employee = await UserModel.findOne({ id: session.id });
+        if (!employee) {
+            return { success: false, error: 'Employee not found' };
+        }
+        
+        // Check if dispute already exists for this date
+        const existingDispute = await DisputeModel.findOne({
+            employeeId: session.id,
+            date,
+            status: 'pending'
+        });
+        
+        if (existingDispute) {
+            return { success: false, error: 'You already have a pending dispute for this date' };
+        }
+        
+        const disputeId = `dispute_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        await DisputeModel.create({
+            id: disputeId,
+            attendanceId,
+            date,
+            employeeId: session.id,
+            employeeName: employee.name,
             reason,
             status: 'pending',
-            createdAt: Date.now()
-        };
-
-        await saveDispute(newDispute);
+            createdAt: getISTTimestamp()
+        });
         
-        // Keep the session unlocked for 2 days (grace period) from now
-        const sessions = await getSessions();
-        const session = sessions.find(s => s.id === sessionId);
-        if (session) {
-            session.unlockedByAdmin = true;
-            // Extend lock to 2 days from now
-            session.lockUntil = Date.now() + (2 * 24 * 60 * 60 * 1000);
-            await saveSession(session);
-        }
-
-        revalidatePath('/student');
-        revalidatePath('/admin');
-        revalidatePath('/teacher');
-        return { success: true, message: 'Dispute raised successfully. Your attendance is unlocked for 2 days.' };
+        return { success: true, message: 'Dispute raised successfully. Admin will review it.' };
     } catch (error) {
+        console.error('Error raising dispute:', error);
         return { success: false, error: 'Failed to raise dispute' };
     }
 }
 
-// Admin approves dispute
-export async function approveDisputeAction(disputeId: string, adminId: string) {
+// Get my disputes (employee only)
+export async function getMyDisputesAction() {
     try {
-        const disputes = await getDisputes();
-        const dispute = disputes.find(d => d.id === disputeId);
+        const session = await getSession();
+        if (!session || session.role !== 'employee') {
+            return { success: false, error: 'Unauthorized' };
+        }
+
+        await connectDB();
         
+        const disputes = await DisputeModel.find({ employeeId: session.id })
+            .sort({ createdAt: -1 })
+            .lean();
+        
+        // Remove MongoDB-specific fields
+        const serializedDisputes = disputes.map(d => {
+            const { _id, __v, ...rest } = d as any;
+            return rest;
+        });
+        
+        return { success: true, disputes: serializedDisputes };
+    } catch (error) {
+        console.error('Error fetching disputes:', error);
+        return { success: false, error: 'Failed to fetch disputes' };
+    }
+}
+
+// Get all disputes (admin only)
+export async function getAllDisputesAction(status?: 'pending' | 'approved' | 'rejected') {
+    try {
+        const session = await getSession();
+        if (!session || session.role !== 'admin') {
+            return { success: false, error: 'Unauthorized' };
+        }
+
+        await connectDB();
+        
+        const query = status ? { status } : {};
+        const disputes = await DisputeModel.find(query)
+            .sort({ createdAt: -1 })
+            .lean();
+        
+        // Remove MongoDB-specific fields
+        const serializedDisputes = disputes.map(d => {
+            const { _id, __v, ...rest } = d as any;
+            return rest;
+        });
+        
+        return { success: true, disputes: serializedDisputes };
+    } catch (error) {
+        console.error('Error fetching disputes:', error);
+        return { success: false, error: 'Failed to fetch disputes' };
+    }
+}
+
+// Resolve dispute (admin only)
+export async function resolveDisputeAction(
+    disputeId: string,
+    decision: 'approved' | 'rejected',
+    adminNotes?: string,
+    rejectionMessage?: string
+) {
+    try {
+        const session = await getSession();
+        if (!session || session.role !== 'admin') {
+            return { success: false, error: 'Unauthorized' };
+        }
+
+        await connectDB();
+        
+        const dispute = await DisputeModel.findOne({ id: disputeId });
         if (!dispute) {
             return { success: false, error: 'Dispute not found' };
         }
-
-        dispute.status = 'approved';
-        dispute.resolvedAt = Date.now();
-        dispute.resolvedBy = adminId;
-
-        await saveDispute(dispute);
-
-        // Keep session unlocked for teacher to edit
-        const sessions = await getSessions();
-        const session = sessions.find(s => s.id === dispute.sessionId);
-        if (session) {
-            session.unlockedByAdmin = true;
-            await saveSession(session);
-            
-            // Notify teacher about unlocked session
-            if (session.subject) {
-                await notifySessionUnlocked(session.teacherId, session.id, session.subject);
-            }
-        }
-
-        revalidatePath('/admin');
-        revalidatePath('/teacher');
-        revalidatePath('/student');
-        return { success: true, message: 'Dispute approved. Teacher notified and session unlocked.' };
-    } catch (error) {
-        return { success: false, error: 'Failed to approve dispute' };
-    }
-}
-
-// Admin rejects dispute
-export async function rejectDisputeAction(disputeId: string, adminId: string) {
-    try {
-        const disputes = await getDisputes();
-        const dispute = disputes.find(d => d.id === disputeId);
         
-        if (!dispute) {
-            return { success: false, error: 'Dispute not found' };
+        if (dispute.status !== 'pending') {
+            return { success: false, error: 'Dispute already resolved' };
         }
-
-        dispute.status = 'rejected';
-        dispute.resolvedAt = Date.now();
-        dispute.resolvedBy = adminId;
-
-        await saveDispute(dispute);
-        revalidatePath('/admin');
-        revalidatePath('/student');
-        return { success: true, message: 'Dispute rejected.' };
-    } catch (error) {
-        return { success: false, error: 'Failed to reject dispute' };
-    }
-}
-
-// Admin manually unlocks session for teacher editing
-export async function unlockSessionForEditingAction(sessionId: string) {
-    try {
-        const sessions = await getSessions();
-        const session = sessions.find(s => s.id === sessionId);
         
-        if (!session) {
-            return { success: false, error: 'Session not found' };
-        }
-
-        session.unlockedByAdmin = true;
-        await saveSession(session);
-
-        revalidatePath('/admin');
-        revalidatePath('/teacher');
-        revalidatePath('/student');
-        return { success: true, message: 'Session unlocked for teacher editing' };
-    } catch (error) {
-        return { success: false, error: 'Failed to unlock session' };
-    }
-}
-
-// Admin locks session (removes unlock)
-export async function lockSessionAction(sessionId: string) {
-    try {
-        const sessions = await getSessions();
-        const session = sessions.find(s => s.id === sessionId);
+        dispute.status = decision;
+        dispute.resolvedBy = session.id;
+        dispute.resolvedAt = getISTTimestamp();
         
-        if (!session) {
-            return { success: false, error: 'Session not found' };
-        }
-
-        session.unlockedByAdmin = false;
-        await saveSession(session);
-
-        revalidatePath('/admin');
-        revalidatePath('/teacher');
-        revalidatePath('/student');
-        return { success: true, message: 'Session locked' };
-    } catch (error) {
-        return { success: false, error: 'Failed to lock session' };
-    }
-}
-
-// Get all disputes
-export async function getDisputesAction() {
-    return await getDisputes();
-}
-
-// Get disputes for a student
-export async function getStudentDisputesAction(studentId: string) {
-    return await getStudentDisputes(studentId);
-}
-
-// Get pending disputes for admin
-export async function getPendingDisputesAction() {
-    return await getPendingDisputes();
-}
-
-// Teacher approves dispute (auto-approve when marked present)
-export async function teacherApproveDisputeAction(disputeId: string, teacherId: string) {
-    try {
-        const disputes = await getDisputes();
-        const dispute = disputes.find(d => d.id === disputeId);
+        if (adminNotes) dispute.adminNotes = adminNotes;
+        if (rejectionMessage) dispute.rejectionMessage = rejectionMessage;
         
-        if (!dispute) {
-            return { success: false, error: 'Dispute not found' };
-        }
-
-        dispute.status = 'approved';
-        dispute.resolvedAt = Date.now();
-        dispute.resolvedBy = teacherId;
-
-        await saveDispute(dispute);
-
-        revalidatePath('/student');
-        revalidatePath('/teacher');
-        return { success: true, message: 'Dispute approved.' };
-    } catch (error) {
-        return { success: false, error: 'Failed to approve dispute' };
-    }
-}
-
-// Teacher rejects dispute with message
-export async function teacherRejectDisputeAction(disputeId: string, teacherId: string, message: string) {
-    try {
-        const disputes = await getDisputes();
-        const dispute = disputes.find(d => d.id === disputeId);
+        await dispute.save();
         
-        if (!dispute) {
-            return { success: false, error: 'Dispute not found' };
-        }
-
-        dispute.status = 'rejected';
-        dispute.resolvedAt = Date.now();
-        dispute.resolvedBy = teacherId;
-        dispute.rejectionMessage = message;
-
-        await saveDispute(dispute);
-
-        revalidatePath('/student');
-        revalidatePath('/teacher');
-        return { success: true, message: 'Dispute rejected.' };
+        return { success: true, message: `Dispute ${decision} successfully` };
     } catch (error) {
-        return { success: false, error: 'Failed to reject dispute' };
-    }
-}
-
-// Check and clean up expired disputes (after 2 days grace period)
-export async function cleanupExpiredDisputesAction() {
-    try {
-        const settings = await getSettings();
-        const disputes = await getDisputes();
-        const sessions = await getSessions();
-        const now = Date.now();
-
-        for (const dispute of disputes) {
-            if (dispute.status === 'pending') {
-                const elapsedTime = now - dispute.createdAt;
-                
-                // If grace period expired, auto-reject and lock session
-                if (elapsedTime > settings.disputeGracePeriod) {
-                    dispute.status = 'rejected';
-                    dispute.resolvedAt = now;
-                    dispute.resolvedBy = 'system';
-                    await saveDispute(dispute);
-
-                    // Lock the session
-                    const session = sessions.find(s => s.id === dispute.sessionId);
-                    if (session) {
-                        session.unlockedByAdmin = false;
-                        await saveSession(session);
-                    }
-                }
-            }
-        }
-
-        revalidatePath('/admin');
-        revalidatePath('/student');
-        return { success: true };
-    } catch (error) {
-        return { success: false, error: 'Failed to cleanup disputes' };
+        console.error('Error resolving dispute:', error);
+        return { success: false, error: 'Failed to resolve dispute' };
     }
 }

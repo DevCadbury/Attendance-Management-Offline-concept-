@@ -5,13 +5,14 @@ export interface User {
     id: string;
     username: string;
     password: string;
-    role: 'admin' | 'teacher' | 'student';
+    role: 'dev' | 'admin' | 'employee';
     name: string;
     email: string;
     locked?: boolean;
-    sectionId?: string;
+    createdBy?: string; // Track who created this user
     createdAt?: number;
     updatedAt?: number;
+    profilePictureUrl?: string;
 }
 
 export async function getUsers(): Promise<User[]> {
@@ -26,8 +27,9 @@ export async function getUsers(): Promise<User[]> {
             name: u.name,
             email: u.email,
             locked: u.locked,
-            sectionId: u.sectionId,
-            createdAt: u.createdAt
+            createdBy: u.createdBy,
+            createdAt: u.createdAt,
+            profilePictureUrl: u.profilePictureUrl
         }));
     } catch (error) {
         console.error('Error reading users:', error);
@@ -55,8 +57,9 @@ export async function getUser(username: string): Promise<User | undefined> {
             name: user.name,
             email: user.email,
             locked: user.locked,
-            sectionId: user.sectionId,
-            createdAt: user.createdAt
+            createdBy: user.createdBy,
+            createdAt: user.createdAt,
+            profilePictureUrl: user.profilePictureUrl
         };
     } catch (error) {
         console.error('Error finding user:', error);
@@ -78,8 +81,9 @@ export async function getUserById(id: string): Promise<User | undefined> {
             name: user.name,
             email: user.email,
             locked: user.locked,
-            sectionId: user.sectionId,
-            createdAt: user.createdAt
+            createdBy: user.createdBy,
+            createdAt: user.createdAt,
+            profilePictureUrl: user.profilePictureUrl
         };
     } catch (error) {
         console.error('Error finding user by id:', error);
@@ -102,7 +106,7 @@ export async function saveUsers(users: User[]): Promise<void> {
                         password: user.password || '',
                         role: user.role,
                         locked: user.locked || false,
-                        sectionId: user.sectionId,
+                        createdBy: user.createdBy,
                         createdAt: user.createdAt || Date.now()
                     }
                 },
@@ -139,7 +143,7 @@ export async function updateUser(userId: string, updates: Partial<User>): Promis
         if (updates.password) updateData.password = updates.password;
         if (updates.role) updateData.role = updates.role;
         if (updates.locked !== undefined) updateData.locked = updates.locked;
-        if (updates.sectionId !== undefined) updateData.sectionId = updates.sectionId;
+        if (updates.createdBy) updateData.createdBy = updates.createdBy;
         if (updates.email) updateData.email = updates.email;
         
         const result = await UserModel.updateOne({ id: userId }, { $set: updateData });
