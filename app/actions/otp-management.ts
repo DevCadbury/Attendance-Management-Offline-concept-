@@ -59,8 +59,8 @@ export async function generateOTPAction(type: 'entry' | 'exit') {
             type,
             generatedAt: now,
             expiryTime,
-            isActive: true,
-            employeeId: null // Universal OTP - can be used by any employee
+            isActive: true
+            // employeeId is undefined (universal OTP - can be used by any employee)
         });
         
         // Send OTP only to security email

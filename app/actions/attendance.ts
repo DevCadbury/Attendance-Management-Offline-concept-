@@ -21,17 +21,17 @@ function getISTDateString(timestamp?: number): string {
 async function isWithinTimeWindow(type: 'entry' | 'exit'): Promise<{ allowed: boolean; message?: string }> {
     await connectDB();
     
-    let settings = await SettingsModel.findOne({ id: 'default' });
+    let settings = await SettingsModel.findOne({ id: 'global' });
     if (!settings) {
         settings = await SettingsModel.create({
-            id: 'default',
+            id: 'global',
             entryTimeStart: '09:00',
             entryTimeEnd: '10:00',
             exitTimeStart: '17:00',
             exitTimeEnd: '18:00',
             otpValidityMinutes: 5,
-            emailFrom: 'Pharmawind13@gmail.com',
-            emailPassword: 'hsrw ewvk aqfd lmiq'
+            securityEmail: '',
+            securityNotificationsEnabled: true
         });
     }
     
