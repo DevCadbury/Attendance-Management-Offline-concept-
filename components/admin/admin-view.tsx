@@ -16,6 +16,7 @@ import { exportAttendanceToExcelAction } from '@/app/actions/export';
 import { getAllDisputesAction, resolveDisputeAction } from '@/app/actions/disputes';
 import { sendTestEmailAction } from '@/app/actions/email';
 import { OTPActivityLogs } from '@/components/dashboard/otp-activity-logs';
+import { AdminAttendanceCalendar } from '@/components/admin/admin-attendance-calendar';
 
 interface AdminViewProps {
     userRole: 'admin' | 'dev';
@@ -504,93 +505,7 @@ export default function AdminView({ userRole }: AdminViewProps) {
 
             {/* Attendance Tab */}
             {activeTab === 'attendance' && (
-                <Card>
-                    <CardHeader>
-                        <div className="flex items-center justify-between">
-                            <CardTitle>Attendance Records</CardTitle>
-                            <Button onClick={handleExportExcel} disabled={loading}>
-                                <Download className="w-4 h-4 mr-2" />
-                                Export Excel
-                            </Button>
-                        </div>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                        {/* Filters */}
-                        <div className="grid md:grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                                <Label>Employee</Label>
-                                <select 
-                                    className="w-full border rounded-md p-2"
-                                    value={filterEmployee}
-                                    onChange={(e) => setFilterEmployee(e.target.value)}
-                                >
-                                    <option value="">All Employees</option>
-                                    {employees.map(emp => (
-                                        <option key={emp.id} value={emp.id}>{emp.name}</option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div className="space-y-2">
-                                <Label>Start Date</Label>
-                                <Input 
-                                    type="date" 
-                                    value={filterStartDate}
-                                    onChange={(e) => setFilterStartDate(e.target.value)}
-                                />
-                            </div>
-                            <div className="space-y-2">
-                                <Label>End Date</Label>
-                                <Input 
-                                    type="date"
-                                    value={filterEndDate}
-                                    onChange={(e) => setFilterEndDate(e.target.value)}
-                                />
-                            </div>
-                        </div>
-
-                        {/* Attendance Table */}
-                        <div className="overflow-x-auto">
-                            <table className="w-full border-collapse">
-                                <thead>
-                                    <tr className="border-b">
-                                        <th className="text-left p-2">Employee</th>
-                                        <th className="text-left p-2">Date</th>
-                                        <th className="text-left p-2">Entry</th>
-                                        <th className="text-left p-2">Exit</th>
-                                        <th className="text-left p-2">Status</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {attendance.map((record) => (
-                                        <tr key={record.id} className="border-b hover:bg-muted/50">
-                                            <td className="p-2">{record.employeeName}</td>
-                                            <td className="p-2">{record.date}</td>
-                                            <td className="p-2">
-                                                {record.entryTime 
-                                                    ? new Date(record.entryTime).toLocaleTimeString('en-IN')
-                                                    : 'N/A'}
-                                            </td>
-                                            <td className="p-2">
-                                                {record.exitTime
-                                                    ? new Date(record.exitTime).toLocaleTimeString('en-IN')
-                                                    : 'N/A'}
-                                            </td>
-                                            <td className="p-2">
-                                                <span className={`px-2 py-1 rounded text-xs ${
-                                                    record.status === 'present' ? 'bg-green-100 text-green-800' :
-                                                    record.status === 'incomplete' ? 'bg-yellow-100 text-yellow-800' :
-                                                    'bg-red-100 text-red-800'
-                                                }`}>
-                                                    {record.status.toUpperCase()}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </div>
-                    </CardContent>
-                </Card>
+                <AdminAttendanceCalendar />
             )}
 
             {/* Settings Tab */}

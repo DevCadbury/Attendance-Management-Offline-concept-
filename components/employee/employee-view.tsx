@@ -535,29 +535,157 @@ export default function EmployeeView({ user }: EmployeeViewProps) {
             {activeTab === 'calendar' && (
                 <Card>
                     <CardHeader>
-                        <CardTitle>Monthly Attendance</CardTitle>
+                        <CardTitle>Monthly Attendance Calendar</CardTitle>
                     </CardHeader>
                     <CardContent>
-                        <div className="space-y-4">
-                            {monthlyAttendance.length > 0 ? (
-                                <div className="grid gap-2">
-                                    {monthlyAttendance.map((record) => (
-                                        <div key={record.id} className="flex items-center justify-between p-3 border rounded-lg">
-                                            <div>
-                                                <p className="font-semibold">{record.date}</p>
-                                                <p className="text-sm text-muted-foreground">
-                                                    Entry: {record.entryTime ? new Date(record.entryTime).toLocaleTimeString('en-IN') : 'N/A'} | 
-                                                    Exit: {record.exitTime ? new Date(record.exitTime).toLocaleTimeString('en-IN') : 'N/A'}
-                                                </p>
+                        <div className="space-y-6">
+                            {/* Calendar View */}
+                            <Calendar
+                                mode="single"
+                                selected={selectedDate}
+                                onSelect={(date) => date && setSelectedDate(date)}
+                                modifiers={{
+                                    present: monthlyAttendance
+                                        .filter(a => a.status === 'present')
+                                        .map(a => new Date(a.date + 'T00:00:00')),
+                                    incomplete: monthlyAttendance
+                                        .filter(a => a.status === 'incomplete')
+                                        .map(a => new Date(a.date + 'T00:00:00'))
+                                }}
+                                modifiersStyles={{
+                                    present: {
+                                        backgroundColor: 'rgb(34, 197, 94)',
+                                        color: 'white',
+                                        borderRadius: '50%',
+                                        fontWeight: 'bold'
+                                    },
+                                    incomplete: {
+                                        backgroundColor: 'rgb(251, 146, 60)',
+                                        color: 'white',
+                                        borderRadius: '50%'
+                                    }
+                                }}
+                                className="rounded-md border"
+                            />
+
+                            {/* Selected Date Details */}
+                            {selectedDate && (() => {
+                                const dateStr = selectedDate.toISOString().split('T')[0];
+                                const record = monthlyAttendance.find(a => a.date === dateStr);
+                                
+                                return (
+                                    <div className="p-4 border rounded-lg bg-muted/30">
+                                        <h3 className="font-semibold mb-3">
+                                            {selectedDate.toLocaleDateString('en-IN', { 
+                                                weekday: 'long', 
+                                                year: 'numeric', 
+                                                month: 'long', 
+                                                day: 'numeric' 
+                                            })}
+                                        </h3>
+                                        
+                                        {record ? (
+                                            <div className="space-y-2">
+                                                <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${
+                                                    record.status === 'present' 
+                                                        ? 'bg-green-100 text-green-800' 
+                                                        : 'bg-orange-100 text-orange-800'
+                                                }`}>
+                                                    {record.status === 'present' ? (
+                                                        <CheckCircle className="h-4 w-4" />
+                                                    ) : (
+                                                        <AlertCircle className="h-4 w-4" />
+                                                    )}
+                                                    <span className="font-semibold">
+                                                        {record.status === 'present' ? 'Present' : 'Incomplete'}
+                                                    </span>
+                                                </div>
+                                                
+                                                <div className="mt-4 space-y-2">
+                                                    {record.entryTime && (
+                                                        <div className="flex items-center gap-2 text-sm">
+                                                            <Clock className="h-4 w-4 text-green-600" />
+                                                            <span className="font-medium">Entry:</span>
+                                                            <span className="text-green-600 font-semibold">
+                                                                {new Date(record.entryTime).toLocaleTimeString('en-IN', {
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit'
+                                                                })}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {record.exitTime && (
+                                                        <div className="flex items-center gap-2 text-sm">
+                                                            <Clock className="h-4 w-4 text-red-600" />
+                                                            <span className="font-medium">Exit:</span>
+                                                            <span className="text-red-600 font-semibold">
+                                                                {new Date(record.exitTime).toLocaleTimeString('en-IN', {
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit'
+                                                                })}
+                                                            </span>
+                                                        </div>
+                                                    )}
+                                                    {!record.exitTime && record.entryTime && (
+                                                        <p className="text-sm text-orange-600 flex items-center gap-2">
+                                                            <AlertCircle className="h-4 w-4" />
+                                                            Exit not marked
+                                                        </p>
+                                                    )}
+                                                    {record.entryLocation?.address && (
+                                                        <div className="flex items-start gap-2 text-sm mt-2 pt-2 border-t">
+                                                            <MapPin className="h-4 w-4 text-muted-foreground mt-0.5" />
+                                                            <span className="text-muted-foreground">{record.entryLocation.address}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
                                             </div>
-                                            <span className={`font-semibold ${getStatusColor(record.status)}`}>
-                                                {record.status.toUpperCase()}
-                                            </span>
-                                        </div>
-                                    ))}
+                                        ) : (
+                                            <div className="flex items-center gap-2 text-muted-foreground">
+                                                <XCircle className="h-4 w-4" />
+                                                <span>No attendance marked</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                );
+                            })()}
+
+                            {/* Legend */}
+                            <div className="flex gap-4 text-sm">
+                                <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-green-500"></div>
+                                    <span>Present</span>
                                 </div>
-                            ) : (
-                                <p className="text-center text-muted-foreground">No attendance records yet</p>
+                                <div className="flex items-center gap-2">
+                                    <div className="w-6 h-6 rounded-full bg-orange-500"></div>
+                                    <span>Incomplete</span>
+                                </div>
+                            </div>
+
+                            {/* List View */}
+                            {monthlyAttendance.length > 0 && (
+                                <div>
+                                    <h4 className="font-semibold mb-3">Recent Attendance</h4>
+                                    <div className="grid gap-2">
+                                        {monthlyAttendance.slice(0, 5).map((record) => (
+                                            <div key={record.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-muted/50 transition-colors">
+                                                <div>
+                                                    <p className="font-semibold">{new Date(record.date + 'T00:00:00').toLocaleDateString('en-IN', { 
+                                                        weekday: 'short',
+                                                        month: 'short', 
+                                                        day: 'numeric' 
+                                                    })}</p>
+                                                    <p className="text-sm text-muted-foreground">
+                                                        {record.entryTime ? new Date(record.entryTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'N/A'} - {record.exitTime ? new Date(record.exitTime).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : 'N/A'}
+                                                    </p>
+                                                </div>
+                                                <span className={`font-semibold ${getStatusColor(record.status)}`}>
+                                                    {record.status.toUpperCase()}
+                                                </span>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
                             )}
                         </div>
                     </CardContent>
