@@ -26,7 +26,8 @@ export async function getSettingsAction() {
                 exitTimeStart: '17:00',
                 exitTimeEnd: '18:00',
                 otpValidityMinutes: 5,
-                securityEmail: ''
+                securityEmail: '',
+                securityNotificationsEnabled: true
             });
         }
         
@@ -57,7 +58,8 @@ export async function getSettingsAction() {
             exitTimeStart: settings.exitTimeStart,
             exitTimeEnd: settings.exitTimeEnd,
             otpValidityMinutes: settings.otpValidityMinutes,
-            securityEmail: settings.securityEmail || ''
+            securityEmail: settings.securityEmail || '',
+            securityNotificationsEnabled: settings.securityNotificationsEnabled !== false
         };
         
         console.log('Final settings being returned:', finalSettings);
