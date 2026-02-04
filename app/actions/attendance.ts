@@ -1,7 +1,7 @@
 'use server';
 
 import connectDB from '@/lib/mongodb';
-import { AttendanceModel, AttendanceLogModel, UserModel, SettingsModel, OTPActivityLogModel } from '@/lib/models';
+import { AttendanceModel, AttendanceLogModel, UserModel, SettingsModel, OTPActivityLogModel, OvertimeRequestModel } from '@/lib/models';
 import { getSession } from '@/lib/auth';
 import { verifyOTPAction, markOTPUsedAction } from './otp-management';
 import { sendOTPVerificationEmail } from '@/lib/email';
@@ -203,6 +203,40 @@ export async function markAttendanceAction(
                 attendance.exitTime = now;
                 attendance.exitLocation = location;
                 attendance.status = 'present'; // Both entry and exit marked = present
+                
+                // Calculate work hours and overtime
+                if (attendance.entryTime && attendance.exitTime) {
+                    const workHours = (attendance.exitTime - attendance.entryTime) / (1000 * 60 * 60);
+                    attendance.workHours = Math.round(workHours * 100) / 100; // Round to 2 decimals
+                    
+                    // Check for approved overtime request
+                    const overtimeRequest = await OvertimeRequestModel.findOne({
+                        employeeId: session.id,
+                        date: today,
+                        status: 'approved'
+                    });
+                    
+                    // Overtime is anything over 8 hours
+                    if (workHours > 8) {
+                        const overtimeHours = Math.round((workHours - 8) * 100) / 100;
+                        
+                        if (overtimeRequest) {
+                            // Overtime is approved
+                            attendance.overtimeHours = overtimeHours;
+                            attendance.overtimeApproved = true;
+                            
+                            // Update overtime request with actual hours
+                            overtimeRequest.actualOvertimeHours = overtimeHours;
+                            overtimeRequest.attendanceId = attendance.id;
+                            await overtimeRequest.save();
+                        } else {
+                            // Overtime worked but not approved
+                            attendance.overtimeHours = overtimeHours;
+                            attendance.overtimeApproved = false;
+                        }
+                    }
+                }
+                
                 await attendance.save();
                 
                 // Create log entry
@@ -365,6 +399,7 @@ export async function updateAttendanceAction(
         status?: 'incomplete' | 'present' | 'absent';
         entryTime?: number;
         exitTime?: number;
+        attachmentUrl?: string;
     },
     reason?: string
 ) {
@@ -390,6 +425,7 @@ export async function updateAttendanceAction(
         if (updates.status !== undefined) attendance.status = updates.status;
         if (updates.entryTime !== undefined) attendance.entryTime = updates.entryTime;
         if (updates.exitTime !== undefined) attendance.exitTime = updates.exitTime;
+        if (updates.attachmentUrl !== undefined) attendance.attachmentUrl = updates.attachmentUrl;
         
         attendance.editedBy = session.id;
         attendance.editedAt = getISTTimestamp();
@@ -408,7 +444,8 @@ export async function updateAttendanceAction(
             timestamp: getISTTimestamp(),
             editedBy: session.id,
             editedByName: admin.name,
-            reason
+            reason,
+            attachmentUrl: updates.attachmentUrl
         });
         
         return { success: true, message: 'Attendance updated successfully' };

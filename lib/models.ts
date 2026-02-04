@@ -72,6 +72,10 @@ export interface IAttendance {
     markedBy: 'employee' | 'admin';
     editedBy?: string;
     editedAt?: number;
+    attachmentUrl?: string; // Cloudinary URL for media attachments
+    workHours?: number; // Total hours worked
+    overtimeHours?: number; // Overtime hours (anything over 8 hours)
+    overtimeApproved?: boolean; // Whether overtime is approved
 }
 
 const attendanceSchema = new Schema<IAttendance>({
@@ -94,11 +98,55 @@ const attendanceSchema = new Schema<IAttendance>({
     status: { type: String, enum: ['incomplete', 'present', 'absent'], default: 'incomplete' },
     markedBy: { type: String, enum: ['employee', 'admin'], required: true },
     editedBy: { type: String },
-    editedAt: { type: Number }
+    editedAt: { type: Number },
+    attachmentUrl: { type: String },
+    workHours: { type: Number },
+    overtimeHours: { type: Number },
+    overtimeApproved: { type: Boolean, default: false }
 });
 
 attendanceSchema.index({ employeeId: 1, date: 1 });
 attendanceSchema.index({ date: 1 });
+
+// Overtime Request Schema
+export interface IOvertimeRequest {
+    id: string;
+    employeeId: string;
+    employeeName: string;
+    date: string; // YYYY-MM-DD
+    requestedHours: number; // Hours of overtime requested
+    reason: string;
+    status: 'pending' | 'approved' | 'rejected';
+    requestedAt: number;
+    approvedBy?: string;
+    approvedAt?: number;
+    rejectedBy?: string;
+    rejectedAt?: number;
+    rejectionReason?: string;
+    attendanceId?: string; // Linked attendance record after approval
+    actualOvertimeHours?: number; // Actual overtime worked (calculated after exit)
+}
+
+const overtimeRequestSchema = new Schema<IOvertimeRequest>({
+    id: { type: String, required: true, unique: true },
+    employeeId: { type: String, required: true },
+    employeeName: { type: String, required: true },
+    date: { type: String, required: true },
+    requestedHours: { type: Number, required: true },
+    reason: { type: String, required: true },
+    status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
+    requestedAt: { type: Number, required: true },
+    approvedBy: { type: String },
+    approvedAt: { type: Number },
+    rejectedBy: { type: String },
+    rejectedAt: { type: Number },
+    rejectionReason: { type: String },
+    attendanceId: { type: String },
+    actualOvertimeHours: { type: Number }
+});
+
+overtimeRequestSchema.index({ employeeId: 1, date: 1 });
+overtimeRequestSchema.index({ status: 1 });
 
 // Dispute Schema
 export interface IDispute {
@@ -153,6 +201,7 @@ export interface IAttendanceLog {
     editedByName?: string;
     reason?: string;
     otpUsed?: string;
+    attachmentUrl?: string; // Cloudinary URL for media attachments
 }
 
 const attendanceLogSchema = new Schema<IAttendanceLog>({
@@ -171,7 +220,8 @@ const attendanceLogSchema = new Schema<IAttendanceLog>({
     editedBy: { type: String },
     editedByName: { type: String },
     reason: { type: String },
-    otpUsed: { type: String }
+    otpUsed: { type: String },
+    attachmentUrl: { type: String }
 });
 
 attendanceLogSchema.index({ employeeId: 1, date: 1 });
@@ -248,6 +298,7 @@ const settingsSchema = new Schema<ISettings>({
 export const UserModel = (mongoose.models.User as Model<IUser>) || mongoose.model<IUser>('User', userSchema);
 export const OTPModel = (mongoose.models.OTP as Model<IOTP>) || mongoose.model<IOTP>('OTP', otpSchema);
 export const AttendanceModel = (mongoose.models.Attendance as Model<IAttendance>) || mongoose.model<IAttendance>('Attendance', attendanceSchema);
+export const OvertimeRequestModel = (mongoose.models.OvertimeRequest as Model<IOvertimeRequest>) || mongoose.model<IOvertimeRequest>('OvertimeRequest', overtimeRequestSchema);
 export const DisputeModel = (mongoose.models.Dispute as Model<IDispute>) || mongoose.model<IDispute>('Dispute', disputeSchema);
 export const AttendanceLogModel = (mongoose.models.AttendanceLog as Model<IAttendanceLog>) || mongoose.model<IAttendanceLog>('AttendanceLog', attendanceLogSchema);
 export const OTPActivityLogModel = (mongoose.models.OTPActivityLog as Model<IOTPActivityLog>) || mongoose.model<IOTPActivityLog>('OTPActivityLog', otpActivityLogSchema);

@@ -25,7 +25,7 @@ interface OTPActivityLog {
     };
 }
 
-export function OTPActivityLogs() {
+export function OTPActivityLogs({ limit }: { limit?: number }) {
     const [logs, setLogs] = useState<OTPActivityLog[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -72,32 +72,18 @@ export function OTPActivityLogs() {
 
     if (loading) {
         return (
-            <Card>
-                <CardHeader>
-                    <CardTitle>OTP Activity Logs</CardTitle>
-                    <CardDescription>Loading OTP validation attempts...</CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <div className="flex justify-center p-8">
-                        <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
-                    </div>
-                </CardContent>
-            </Card>
+            <div className="flex justify-center p-8">
+                <div className="h-8 w-8 border-4 border-primary border-t-transparent rounded-full animate-spin" />
+            </div>
         );
     }
 
+    const displayLogs = limit ? logs.slice(0, limit) : logs;
+
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle>OTP Activity Logs</CardTitle>
-                <CardDescription>
-                    Recent OTP validation attempts by employees
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <div className="space-y-3">
-                    {logs.length === 0 ? (
-                        <div className="text-center py-8 text-muted-foreground">
+        <div className="space-y-3">
+            {displayLogs.length === 0 ? (
+                <div className="text-center py-8 text-muted-foreground">
                             No OTP activity logs yet
                         </div>
                     ) : (
@@ -183,7 +169,5 @@ export function OTPActivityLogs() {
                         ))
                     )}
                 </div>
-            </CardContent>
-        </Card>
-    );
+        );
 }

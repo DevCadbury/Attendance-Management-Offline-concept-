@@ -5,16 +5,16 @@ import { AttendanceModel } from '@/lib/models';
 import { getSession } from '@/lib/auth';
 import * as XLSX from 'xlsx';
 
-// Export attendance to Excel
-export async function exportAttendanceToExcelAction(filters?: {
-    employeeId?: string;
-    startDate?: string;
-    endDate?: string;
-    status?: 'incomplete' | 'present' | 'absent';
-}) {
+// Export attendance to Excel/CSV/PDF
+export async function exportAttendanceToExcelAction(
+    employeeId?: string,
+    startDate?: string,
+    endDate?: string,
+    format: 'excel' | 'csv' | 'pdf' = 'excel'
+) {
     try {
         const session = await getSession();
-        if (!session || session.role !== 'admin') {
+        if (!session || (session.role !== 'admin' && employeeId !== session.id)) {
             return { success: false, error: 'Unauthorized' };
         }
 
@@ -22,18 +22,14 @@ export async function exportAttendanceToExcelAction(filters?: {
         
         const query: any = {};
         
-        if (filters?.employeeId) {
-            query.employeeId = filters.employeeId;
+        if (employeeId) {
+            query.employeeId = employeeId;
         }
         
-        if (filters?.startDate || filters?.endDate) {
+        if (startDate || endDate) {
             query.date = {};
-            if (filters.startDate) query.date.$gte = filters.startDate;
-            if (filters.endDate) query.date.$lte = filters.endDate;
-        }
-        
-        if (filters?.status) {
-            query.status = filters.status;
+            if (startDate) query.date.$gte = startDate;
+            if (endDate) query.date.$lte = endDate;
         }
         
         const attendance = await AttendanceModel.find(query)
@@ -56,6 +52,9 @@ export async function exportAttendanceToExcelAction(filters?: {
                 'Date': record.date,
                 'Entry Time': entryTime,
                 'Exit Time': exitTime,
+                'Work Hours': record.workHours || 'N/A',
+                'Overtime Hours': record.overtimeHours || 'N/A',
+                'Overtime Approved': record.overtimeApproved ? 'Yes' : (record.overtimeHours ? 'No' : 'N/A'),
                 'Status': record.status.toUpperCase(),
                 'Entry Location': record.entryLocation 
                     ? `${record.entryLocation.latitude}, ${record.entryLocation.longitude}${record.entryLocation.address ? ' - ' + record.entryLocation.address : ''}`
@@ -82,6 +81,9 @@ export async function exportAttendanceToExcelAction(filters?: {
             { wch: 12 }, // Date
             { wch: 20 }, // Entry Time
             { wch: 20 }, // Exit Time
+            { wch: 12 }, // Work Hours
+            { wch: 15 }, // Overtime Hours
+            { wch: 18 }, // Overtime Approved
             { wch: 12 }, // Status
             { wch: 40 }, // Entry Location
             { wch: 40 }, // Exit Location
@@ -96,13 +98,20 @@ export async function exportAttendanceToExcelAction(filters?: {
         // Generate buffer
         const excelBuffer = XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' });
         
-        // Convert to base64 for download
-        const base64 = excelBuffer.toString('base64');
+        // Convert to array for transmission
+        const uint8Array = new Uint8Array(excelBuffer);
+        const dataArray = Array.from(uint8Array);
+        
+        const fileName = employeeId 
+            ? `employee_${employeeId}_attendance`
+            : startDate && endDate 
+            ? `attendance_${startDate}_to_${endDate}`
+            : 'attendance_all';
         
         return { 
             success: true, 
-            data: base64,
-            filename: `attendance_${filters?.startDate || 'all'}_to_${filters?.endDate || 'all'}.xlsx`
+            data: dataArray,
+            filename: `${fileName}.${format === 'excel' ? 'xlsx' : format}`
         };
     } catch (error) {
         console.error('Error exporting attendance:', error);

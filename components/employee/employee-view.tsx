@@ -8,11 +8,13 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Calendar } from '@/components/ui/calendar';
 import { toast } from 'sonner';
-import { User, MapPin, Clock, CheckCircle, XCircle, AlertCircle } from 'lucide-react';
+import { User, MapPin, Clock, CheckCircle, XCircle, AlertCircle, ChevronLeft, ChevronRight, CalendarIcon } from 'lucide-react';
 import { markAttendanceAction, getMyAttendanceAction, getTodayAttendanceAction } from '@/app/actions/attendance';
 import { raiseDisputeAction, getMyDisputesAction } from '@/app/actions/disputes';
 import { changeOwnPasswordAction } from '@/app/actions/users';
 import { requestOTPAction } from '@/app/actions/email';
+import ExportAttendanceDialog from '@/components/admin/export-attendance-dialog';
+import OvertimeRequestManager from '@/components/employee/overtime-request-manager';
 
 interface EmployeeViewProps {
     user: {
@@ -24,7 +26,7 @@ interface EmployeeViewProps {
 }
 
 export default function EmployeeView({ user }: EmployeeViewProps) {
-    const [activeTab, setActiveTab] = useState<'mark' | 'calendar' | 'disputes' | 'password'>('mark');
+    const [activeTab, setActiveTab] = useState<'mark' | 'calendar' | 'disputes' | 'overtime' | 'password'>('mark');
     const [otp, setOtp] = useState('');
     const [loading, setLoading] = useState(false);
     const [location, setLocation] = useState<{latitude: number; longitude: number} | null>(null);
@@ -32,6 +34,7 @@ export default function EmployeeView({ user }: EmployeeViewProps) {
     const [todayAttendance, setTodayAttendance] = useState<any>(null);
     const [monthlyAttendance, setMonthlyAttendance] = useState<any[]>([]);
     const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+    const [currentMonth, setCurrentMonth] = useState<Date>(new Date());
     const [disputes, setDisputes] = useState<any[]>([]);
     
     // Dispute form
@@ -285,6 +288,44 @@ export default function EmployeeView({ user }: EmployeeViewProps) {
         }
     };
 
+    function previousMonth() {
+        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1));
+    }
+
+    function nextMonth() {
+        setCurrentMonth(new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1));
+    }
+
+    function goToToday() {
+        const today = new Date();
+        setCurrentMonth(new Date(today.getFullYear(), today.getMonth(), 1));
+        setSelectedDate(today);
+    }
+
+    function generateCalendarDays() {
+        const year = currentMonth.getFullYear();
+        const month = currentMonth.getMonth();
+        
+        const firstDay = new Date(year, month, 1);
+        const lastDay = new Date(year, month + 1, 0);
+        const firstDayOfWeek = firstDay.getDay();
+        const daysInMonth = lastDay.getDate();
+        
+        const days = [];
+        
+        // Empty cells for days before month starts
+        for (let i = 0; i < firstDayOfWeek; i++) {
+            days.push(null);
+        }
+        
+        // Days of the month
+        for (let day = 1; day <= daysInMonth; day++) {
+            days.push(new Date(year, month, day));
+        }
+        
+        return days;
+    }
+
     return (
         <div className="space-y-6">
             {/* Header */}
@@ -329,6 +370,12 @@ export default function EmployeeView({ user }: EmployeeViewProps) {
                     onClick={() => setActiveTab('disputes')}
                 >
                     Disputes
+                </Button>
+                <Button
+                    variant={activeTab === 'overtime' ? 'default' : 'outline'}
+                    onClick={() => setActiveTab('overtime')}
+                >
+                    Overtime Requests
                 </Button>
                 <Button
                     variant={activeTab === 'password' ? 'default' : 'outline'}
@@ -456,14 +503,16 @@ export default function EmployeeView({ user }: EmployeeViewProps) {
                                 </span>
                             </div>
                             <div className="space-y-2">
-                                <Button
-                                    variant="outline"
-                                    className="w-full"
-                                    onClick={() => handleRequestOTP('entry')}
-                                    disabled={loading}
-                                >
-                                    Request OTP from Security
-                                </Button>
+                                {!todayAttendance?.entryTime && (
+                                    <Button
+                                        variant="outline"
+                                        className="w-full"
+                                        onClick={() => handleRequestOTP('entry')}
+                                        disabled={loading}
+                                    >
+                                        Request OTP from Security
+                                    </Button>
+                                )}
                                 <Button
                                     className="w-full"
                                     onClick={handleMarkEntry}
@@ -501,14 +550,16 @@ export default function EmployeeView({ user }: EmployeeViewProps) {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Button
-                                    variant="outline"
-                                    className="w-full"
-                                    onClick={() => handleRequestOTP('exit')}
-                                    disabled={loading || !todayAttendance?.entryTime}
-                                >
-                                    Request OTP from Security
-                                </Button>
+                                {!todayAttendance?.exitTime && todayAttendance?.entryTime && (
+                                    <Button
+                                        variant="outline"
+                                        className="w-full"
+                                        onClick={() => handleRequestOTP('exit')}
+                                        disabled={loading}
+                                    >
+                                        Request OTP from Security
+                                    </Button>
+                                )}
                                 <Button
                                     className="w-full"
                                     onClick={handleMarkExit}
@@ -535,38 +586,109 @@ export default function EmployeeView({ user }: EmployeeViewProps) {
             {activeTab === 'calendar' && (
                 <Card>
                     <CardHeader>
-                        <CardTitle>Monthly Attendance Calendar</CardTitle>
+                        <div className="space-y-4">
+                            <div className="flex items-center justify-between">
+                                <CardTitle>Monthly Attendance Calendar</CardTitle>
+                                <div className="flex items-center gap-2">
+                                    <ExportAttendanceDialog employeeId={user.id} employeeName={user.name} />
+                                    <Button onClick={goToToday} variant="outline" size="sm">
+                                        Today
+                                    </Button>
+                                </div>
+                            </div>
+                            <div className="flex items-center justify-between">
+                                <Button onClick={previousMonth} variant="ghost" size="sm">
+                                    <ChevronLeft className="h-4 w-4" />
+                                </Button>
+                                <h3 className="font-semibold text-lg">
+                                    {currentMonth.toLocaleDateString('en-IN', { month: 'long', year: 'numeric' })}
+                                </h3>
+                                <Button onClick={nextMonth} variant="ghost" size="sm">
+                                    <ChevronRight className="h-4 w-4" />
+                                </Button>
+                            </div>
+                        </div>
                     </CardHeader>
                     <CardContent>
                         <div className="space-y-6">
-                            {/* Calendar View */}
-                            <Calendar
-                                mode="single"
-                                selected={selectedDate}
-                                onSelect={(date) => date && setSelectedDate(date)}
-                                modifiers={{
-                                    present: monthlyAttendance
-                                        .filter(a => a.status === 'present')
-                                        .map(a => new Date(a.date + 'T00:00:00')),
-                                    incomplete: monthlyAttendance
-                                        .filter(a => a.status === 'incomplete')
-                                        .map(a => new Date(a.date + 'T00:00:00'))
-                                }}
-                                modifiersStyles={{
-                                    present: {
-                                        backgroundColor: 'rgb(34, 197, 94)',
-                                        color: 'white',
-                                        borderRadius: '50%',
-                                        fontWeight: 'bold'
-                                    },
-                                    incomplete: {
-                                        backgroundColor: 'rgb(251, 146, 60)',
-                                        color: 'white',
-                                        borderRadius: '50%'
-                                    }
-                                }}
-                                className="rounded-md border"
-                            />
+                            {/* Custom Calendar Grid */}
+                            <div className="space-y-2">
+                                {/* Weekday headers */}
+                                <div className="grid grid-cols-7 gap-1 text-center text-sm font-medium text-muted-foreground mb-2">
+                                    <div>Sun</div>
+                                    <div>Mon</div>
+                                    <div>Tue</div>
+                                    <div>Wed</div>
+                                    <div>Thu</div>
+                                    <div>Fri</div>
+                                    <div>Sat</div>
+                                </div>
+                                
+                                {/* Calendar days */}
+                                <div className="grid grid-cols-7 gap-1">
+                                    {generateCalendarDays().map((day, index) => {
+                                        if (!day) {
+                                            return <div key={`empty-${index}`} className="aspect-square" />;
+                                        }
+                                        
+                                        const dateStr = day.toISOString().split('T')[0];
+                                        const record = monthlyAttendance.find(a => a.date === dateStr);
+                                        const isSelected = selectedDate.toISOString().split('T')[0] === dateStr;
+                                        const isToday = new Date().toISOString().split('T')[0] === dateStr;
+                                        
+                                        let bgColor = 'bg-background';
+                                        let textColor = '';
+                                        
+                                        if (record) {
+                                            if (record.status === 'present') {
+                                                bgColor = 'bg-green-500';
+                                                textColor = 'text-white';
+                                            } else if (record.status === 'incomplete') {
+                                                bgColor = 'bg-orange-500';
+                                                textColor = 'text-white';
+                                            } else if (record.status === 'absent') {
+                                                bgColor = 'bg-red-500';
+                                                textColor = 'text-white';
+                                            }
+                                        }
+                                        
+                                        return (
+                                            <button
+                                                key={dateStr}
+                                                onClick={() => setSelectedDate(day)}
+                                                className={`
+                                                    aspect-square p-1 rounded-lg border text-sm transition-all flex items-center justify-center
+                                                    ${isSelected ? 'border-primary ring-2 ring-primary' : 'border-border hover:border-primary/50'}
+                                                    ${isToday ? 'font-bold' : ''}
+                                                    ${bgColor} ${textColor}
+                                                `}
+                                            >
+                                                {day.getDate()}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+
+                            {/* Legend */}
+                            <div className="flex flex-wrap gap-3 text-xs pt-4 border-t">
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                    <span>Present</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+                                    <span>Incomplete</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                                    <span>Absent</span>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-3 h-3 rounded border-2 border-primary"></div>
+                                    <span>Today</span>
+                                </div>
+                            </div>
 
                             {/* Selected Date Details */}
                             {selectedDate && (() => {
@@ -588,16 +710,20 @@ export default function EmployeeView({ user }: EmployeeViewProps) {
                                             <div className="space-y-2">
                                                 <div className={`inline-flex items-center gap-2 px-3 py-1 rounded-full ${
                                                     record.status === 'present' 
-                                                        ? 'bg-green-100 text-green-800' 
-                                                        : 'bg-orange-100 text-orange-800'
+                                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200' 
+                                                        : record.status === 'incomplete'
+                                                        ? 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+                                                        : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200'
                                                 }`}>
                                                     {record.status === 'present' ? (
                                                         <CheckCircle className="h-4 w-4" />
-                                                    ) : (
+                                                    ) : record.status === 'incomplete' ? (
                                                         <AlertCircle className="h-4 w-4" />
+                                                    ) : (
+                                                        <XCircle className="h-4 w-4" />
                                                     )}
                                                     <span className="font-semibold">
-                                                        {record.status === 'present' ? 'Present' : 'Incomplete'}
+                                                        {record.status.charAt(0).toUpperCase() + record.status.slice(1)}
                                                     </span>
                                                 </div>
                                                 
@@ -649,18 +775,6 @@ export default function EmployeeView({ user }: EmployeeViewProps) {
                                     </div>
                                 );
                             })()}
-
-                            {/* Legend */}
-                            <div className="flex gap-4 text-sm">
-                                <div className="flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-full bg-green-500"></div>
-                                    <span>Present</span>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                    <div className="w-6 h-6 rounded-full bg-orange-500"></div>
-                                    <span>Incomplete</span>
-                                </div>
-                            </div>
 
                             {/* List View */}
                             {monthlyAttendance.length > 0 && (
@@ -755,6 +869,11 @@ export default function EmployeeView({ user }: EmployeeViewProps) {
                         </CardContent>
                     </Card>
                 </div>
+            )}
+
+            {/* Overtime Requests Tab */}
+            {activeTab === 'overtime' && (
+                <OvertimeRequestManager />
             )}
 
             {/* Password Change Tab */}

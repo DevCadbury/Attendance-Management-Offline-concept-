@@ -4,23 +4,16 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
-import { LayoutDashboard, Users, QrCode, LogOut, Calendar, MessageSquare, BarChart, BookOpen, WifiOff } from 'lucide-react';
+import { LayoutDashboard, Users, LogOut, FileText, Activity, Settings as SettingsIcon, FileEdit } from 'lucide-react';
 import { logoutAction } from '@/app/actions/auth';
 
 const links = [
     { href: '/admin', label: 'Dashboard', icon: LayoutDashboard, role: 'admin' },
     { href: '/admin/users', label: 'Users', icon: Users, role: 'admin' },
-    { href: '/admin/timetable', label: 'Timetable', icon: Calendar, role: 'admin' },
-    { href: '/admin/reports', label: 'Reports', icon: BarChart, role: 'admin' },
-    { href: '/admin/disputes', label: 'Disputes', icon: MessageSquare, role: 'admin' },
-    { href: '/teacher', label: 'Dashboard', icon: LayoutDashboard, role: 'teacher' },
-    { href: '/teacher/timetable', label: 'My Timetable', icon: BookOpen, role: 'teacher' },
-    { href: '/teacher/offline', label: 'Offline Attendance', icon: WifiOff, role: 'teacher' },
-    { href: '/teacher/disputes', label: 'Disputes', icon: MessageSquare, role: 'teacher' },
-    { href: '/student', label: 'Dashboard', icon: LayoutDashboard, role: 'student' },
-    { href: '/student/timetable', label: 'My Timetable', icon: Calendar, role: 'student' },
-    { href: '/student/attendance', label: 'My Attendance', icon: QrCode, role: 'student' },
-    { href: '/student/disputes', label: 'Disputes', icon: MessageSquare, role: 'student' },
+    { href: '/admin/otp-logs', label: 'Activity Logs', icon: Activity, role: 'admin' },
+    { href: '/admin/attendance-logs', label: 'Edit Logs', icon: FileEdit, role: 'admin' },
+    { href: '/admin/settings', label: 'Settings', icon: SettingsIcon, role: 'admin' },
+    { href: '/employee', label: 'Dashboard', icon: LayoutDashboard, role: 'employee' },
 ];
 
 export function Sidebar({ role }: { role: string }) {

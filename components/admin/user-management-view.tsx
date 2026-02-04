@@ -19,7 +19,8 @@ import {
     Unlock,
     Mail,
     Calendar,
-    Users
+    Users,
+    Eye
 } from 'lucide-react';
 import { 
     getAllEmployeesAction, 
@@ -332,6 +333,15 @@ export default function UserManagementView() {
                                             </td>
                                             <td className="p-3">
                                                 <div className="flex justify-end gap-2">
+                                                    <Link href={`/admin/employee/${emp.id}`}>
+                                                        <Button 
+                                                            size="sm" 
+                                                            variant="ghost"
+                                                            title="View Profile"
+                                                        >
+                                                            <Eye className="w-4 h-4" />
+                                                        </Button>
+                                                    </Link>
                                                     <Button 
                                                         size="sm" 
                                                         variant="outline"

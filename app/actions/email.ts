@@ -111,20 +111,6 @@ export async function requestOTPAction(type: 'entry' | 'exit') {
             return { success: false, error: 'Failed to send OTP request' };
         }
         
-        // Log the OTP request
-        const logId = `otpreq_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        await AttendanceLogModel.create({
-            id: logId,
-            employeeId: session.id,
-            employeeName: session.name || 'Unknown',
-            date: new Date().toISOString().split('T')[0],
-            action: type,
-            timestamp: getISTTimestamp(),
-            reason: `OTP requested for ${type}`,
-            editedBy: session.id,
-            editedByName: session.name || 'Unknown'
-        });
-        
         return { 
             success: true, 
             message: 'OTP request sent to security guard. Please ask them for the code.'

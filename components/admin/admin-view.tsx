@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
-import { Key, Clock, Download, Settings, Users, FileText, UserPlus, Edit, Trash2, X } from 'lucide-react';
+import Link from 'next/link';
+import { Key, Clock, Download, Settings, Users, FileText, UserPlus, Edit, Trash2, X, ExternalLink } from 'lucide-react';
 import { generateOTPAction, getCurrentOTPAction, invalidateOTPAction } from '@/app/actions/otp-management';
 import { getAllEmployeesAction, createEmployeeAction, updateEmployeeAction, deleteEmployeeAction, createAdminAction } from '@/app/actions/users';
 import { getAllAttendanceAction } from '@/app/actions/attendance';
@@ -218,16 +219,18 @@ export default function AdminView({ userRole }: AdminViewProps) {
 
     async function handleExportExcel() {
         setLoading(true);
-        const result = await exportAttendanceToExcelAction({
-            employeeId: filterEmployee || undefined,
-            startDate: filterStartDate || undefined,
-            endDate: filterEndDate || undefined
-        });
+        const result = await exportAttendanceToExcelAction(
+            filterEmployee || undefined,
+            filterStartDate || undefined,
+            filterEndDate || undefined,
+            'excel'
+        );
         setLoading(false);
 
         if (result.success && result.data) {
             // Download the file
-            const blob = new Blob([Buffer.from(result.data, 'base64')], { 
+            const uint8Array = new Uint8Array(result.data);
+            const blob = new Blob([uint8Array], { 
                 type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
             });
             const url = URL.createObjectURL(blob);
@@ -419,6 +422,12 @@ export default function AdminView({ userRole }: AdminViewProps) {
                     <FileText className="w-4 h-4 mr-2" />
                     Disputes
                 </Button>
+                <Link href="/admin/overtime">
+                    <Button variant="outline">
+                        <Clock className="w-4 h-4 mr-2" />
+                        Overtime Requests
+                    </Button>
+                </Link>
                 <Button variant={activeTab === 'settings' ? 'default' : 'outline'} onClick={() => setActiveTab('settings')}>
                     <Settings className="w-4 h-4 mr-2" />
                     Settings
@@ -497,9 +506,6 @@ export default function AdminView({ userRole }: AdminViewProps) {
                             </CardContent>
                         </Card>
                     </div>
-
-                    {/* OTP Activity Logs */}
-                    <OTPActivityLogs />
                 </div>
             )}
 
